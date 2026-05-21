@@ -1422,12 +1422,25 @@
         padding: 13px; margin-left: 0; border-radius: 10px;
       }
 
-      /* ── Economia: grade 2×2 ─────────────── */
-      .economia-strip { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-      .econ-card      { padding: 12px 14px; border-radius: 10px; }
-      .econ-label     { font-size: 9.5px; line-height: 1.4; }
-      .econ-value     { font-size: clamp(14px, 4vw, 18px); }
-      .econ-sub       { font-size: 9px; }
+      /* ── Economia: grade 2×2, 100% sem vazar ────────── */
+      .economia-strip {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 16px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .econ-card {
+        padding: 12px 14px;
+        border-radius: 10px;
+        min-width: 0;
+        box-sizing: border-box;
+        overflow: hidden;
+      }
+      .econ-label  { font-size: 9.5px; line-height: 1.4; white-space: normal; word-break: break-word; }
+      .econ-value  { font-size: clamp(13px, 4vw, 18px); word-break: break-word; }
+      .econ-sub    { font-size: 9px; white-space: normal; }
 
       /* ── Taxas Oferecidas: inputs fluidos ── */
       .prop-input-widget             { width: 100%; min-width: 0; }
@@ -1512,8 +1525,10 @@
       .sim-brand-toggle { width: 100%; }
       .sim-brand-btn { flex: 1; justify-content: center; }
 
-      .econ-value { font-size: clamp(13px, 3.8vw, 16px); }
-      .econ-label { font-size: 9px; }
+      .economia-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .econ-card      { padding: 10px 12px; min-width: 0; overflow: hidden; }
+      .econ-value     { font-size: clamp(12px, 3.8vw, 15px); }
+      .econ-label     { font-size: 9px; }
       .proposta-ref-input-wrap input { font-size: 14px; }
       .proposta-ref-label { font-size: 10px; }
     }
