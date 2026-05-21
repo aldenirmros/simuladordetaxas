@@ -1244,14 +1244,14 @@
 
       /* ── Navbar mobile ─────────────────────────────── */
       .navbar {
-        padding: 0 10px;
+        padding: 0 12px;
         gap: 0;
         height: auto;
-        min-height: 56px;
+        min-height: 54px;
         flex-wrap: nowrap;
         overflow: visible;
       }
-      .navbar-meta { display: none; }          /* oculta status dot */
+      .navbar-meta { display: none; }
       .logo-name { font-size: 12px; }
       .logo-sub  { font-size: 8.5px; }
       .logo-icon { width: 30px; height: 30px; border-radius: 7px; }
@@ -1260,19 +1260,17 @@
       /* Nav links: abreviados em mobile */
       .navbar-nav { gap: 2px; flex-shrink: 0; }
       .nav-item {
-        padding: 5px 8px;
-        font-size: 11px;
+        padding: 6px 10px;
+        font-size: 11.5px;
         letter-spacing: 0;
         white-space: nowrap;
       }
-      /* Mostrar só o texto curto no mobile */
       .nav-full  { display: none; }
       .nav-short { display: inline; }
-      /* Remove o dot indicator no active para economizar espaço */
       .nav-item.active::before { display: none; }
 
       /* ── Page wrapper ──────────────────────────────── */
-      .page-wrapper { padding: 72px 12px 44px; }
+      .page-wrapper { padding: 70px 14px 48px; }
 
       /* ── Page header ───────────────────────────────── */
       .page-header {
@@ -1295,14 +1293,20 @@
       .kpi-label { font-size: 9.5px; }
 
       /* ── Profile / theme bar ───────────────────────── */
-      .profile-bar { gap: 8px; margin-bottom: 14px; }
+      .profile-bar {
+        gap: 8px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+        row-gap: 8px;
+      }
       .profile-bar-label { font-size: 10px; }
       .profile-btn {
-        padding: 10px 14px;   /* maior área de toque */
+        padding: 10px 14px;
         font-size: 11.5px;
       }
+      .theme-bar { margin-left: 0; }
       .theme-bar-label { display: none; }
-      .theme-btn { width: 30px; height: 30px; }  /* toque confortável */
+      .theme-btn { width: 30px; height: 30px; }
 
       /* ── Cards ─────────────────────────────────────── */
       .bi-card { border-radius: 10px; }
@@ -1311,7 +1315,6 @@
       .card-subtitle { font-size: 10.5px; }
 
       /* ── Input table (Taxas de Entrada) ────────────── */
-      /* Scroll horizontal com indicador iOS-friendly */
       .bi-card > .input-table,
       .bi-card > table {
         display: block;
@@ -1319,7 +1322,6 @@
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-x: contain;
       }
-      /* Inputs ligeiramente maiores para polegar */
       .input-widget { width: 96px; }
       .input-widget input {
         width: 58px;
@@ -1330,7 +1332,7 @@
       .row-label {
         font-size: 11px;
         width: 110px;
-        white-space: nowrap;  /* faixas "2x", "3x" nunca quebram */
+        white-space: nowrap;
       }
 
       /* ── Result table (TAXA) ────────────────────────── */
@@ -1338,7 +1340,6 @@
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior-x: contain;
-        /* Sombra lateral indicando scroll */
         background:
           linear-gradient(to right, var(--card-from) 30%, transparent),
           linear-gradient(to left,  var(--card-from) 30%, transparent) right,
@@ -1353,92 +1354,24 @@
       .result-table thead th { padding: 10px 12px; }
       .cet-value { min-width: 72px; font-size: 12px; padding: 4px 9px; }
 
-      /* ── Comparativo table (Proposta) — CARD VIEW mobile ── */
-      /* A tabela vira cards empilhados: cada <tr> = 1 card,   */
-      /* cada <td> = linha label + valor dentro do card.        */
-      .comp-table { min-width: unset; display: block; }
-      .comp-table thead { display: none; }   /* oculta header horizontal */
-      .comp-table tbody { display: block; }
-
-      .comp-table tbody tr {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0;
-        margin-bottom: 10px;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        overflow: hidden;
-        background: linear-gradient(160deg, var(--card-from), var(--card-to));
-      }
-      /* Linha da faixa (1ª célula) ocupa largura total → título do card */
-      .comp-table tbody tr td:first-child {
-        grid-column: 1 / -1;
-        text-align: center;
-        padding: 8px 14px;
-        background: rgba(255,255,255,0.03);
-        border-bottom: 1px solid var(--border);
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--text-soft);
-      }
-      /* Células de dados: display flex com label em cima */
-      .comp-table tbody tr td:not(:first-child) {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: flex-start;
-        padding: 10px 8px 12px;
-        border-bottom: 1px solid rgba(255,255,255,0.04);
-        text-align: center;
-      }
-      /* Label injetado via data-label */
-      .comp-table tbody tr td[data-label]::before {
-        content: attr(data-label);
-        display: block;
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        margin-bottom: 6px;
-        line-height: 1.2;
-        text-align: center;
-      }
-      /* Separador visual entre VM e Elo */
-      .comp-table tbody tr td:nth-child(4) {
-        border-left: 1px solid var(--border);
-      }
-      /* Linha de section divider: span total */
-      .comp-table tbody tr.comp-section-divider {
-        display: block;
-        margin-bottom: 4px;
-        border: none;
-        border-radius: 0;
-        background: transparent;
-      }
-      .comp-table tbody tr.comp-section-divider td {
-        grid-column: unset;
-        background: transparent;
-        border: none;
-      }
-
-
       /* ── Descobrir Taxa / Simular Venda ────────────── */
-      .taxa-body  { flex-direction: column; align-items: flex-start; padding: 16px; }
-      .taxa-sep   { width: 100%; height: 1px; margin: 16px 0; }
-      .taxa-results { flex-wrap: wrap; }
+      .taxa-body  { flex-direction: column; align-items: stretch; padding: 16px; gap: 16px; }
+      .taxa-sep   { width: 100%; height: 1px; margin: 0; }
+      .taxa-inputs { width: 100%; }
+      .taxa-results { flex-wrap: wrap; gap: 0; }
+      .taxa-result-item { min-width: 140px; }
       .taxa-result-value { font-size: 20px; }
       .taxa-result-highlight .taxa-result-value { font-size: 26px; }
-      .taxa-input-wrap { width: 100%; max-width: 280px; }
+      .taxa-input-wrap { width: 100%; max-width: none; }
 
-      .sim-body { flex-direction: column; align-items: flex-start; padding: 16px; }
-      .sim-vsep { width: 100%; height: 1px; margin: 16px 0; }
+      .sim-body { flex-direction: column; align-items: stretch; padding: 16px; gap: 16px; }
+      .sim-vsep { width: 100%; height: 1px; margin: 0; }
       .sim-highlight { font-size: 26px; }
-      .sim-input-wrap { width: 100%; max-width: 280px; }
+      .sim-input-wrap { width: 100%; max-width: none; }
       .sim-field-parc { width: 100%; }
-      .sim-inputs-group { gap: 14px; }
+      .sim-inputs-group { gap: 14px; width: 100%; }
+      .sim-results { flex-wrap: wrap; }
+      .sim-res-item { min-width: 130px; }
 
       /* ── Footer ────────────────────────────────────── */
       .page-footer { flex-direction: column; gap: 8px; align-items: flex-start; margin-top: 28px; }
@@ -1446,87 +1379,200 @@
 
       /* ── Modal PDF ─────────────────────────────────── */
       .modal-box {
-        width: calc(100vw - 24px);
-        padding: 24px 18px;
+        width: calc(100vw - 28px);
+        padding: 24px 20px;
         border-radius: 14px;
       }
       .modal-title { font-size: 16px; }
       .modal-desc  { font-size: 11.5px; }
-      .modal-input-wrap input { font-size: 18px; padding: 14px 16px; } /* área de toque grande */
+      .modal-input-wrap input { font-size: 18px; padding: 14px 16px; }
       .btn-cancel, .btn-confirm { padding: 13px 20px; font-size: 12.5px; flex: 1; }
       .modal-actions { gap: 8px; }
 
-      /* ── Proposta: grid colapsa em coluna única ─────── */
+      /* ══ PROPOSTA COMERCIAL — MOBILE ══════════════════ */
+
+      /* Grid: coluna única */
       .proposta-grid { grid-template-columns: 1fr; gap: 14px; }
 
-      /* comp-table: card-view already defined above, keep sizing */
-      .comp-cet   { min-width: unset; width: 100%; font-size: 11.5px; padding: 4px 8px; }
-      .delta-badge { font-size: 10px; padding: 2px 7px; margin-top: 4px; }
-      .saving-brl  { font-size: 9.5px; }
-
-      /* ── Proposta: economia strip 2×2 ──────────────── */
-      .economia-strip { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
-      .econ-card { padding: 11px 12px; border-radius: 8px; }
-      .econ-label { font-size: 9px; }
-      .econ-value { font-size: clamp(13px, 3.5vw, 17px); }
-
-      /* ── Proposta ref bar ──────────────────────────── */
+      /* ── Ref bar: empilhada, uniforme ─────────────────── */
       .proposta-ref-bar {
         flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 14px 14px;
+        align-items: stretch;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 12px;
+        margin-bottom: 16px;
       }
-      .proposta-ref-input-wrap { width: 100%; max-width: 300px; }
-      .proposta-ref-hint { font-size: 11px; }
+      /* Linha 1: label + input lado a lado, fluidos */
+      .proposta-ref-bar-row1 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .proposta-ref-label {
+        flex-shrink: 0;
+        font-size: 10.5px;
+        white-space: nowrap;
+      }
+      .proposta-ref-input-wrap {
+        flex: 1;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+      }
+      .proposta-ref-input-wrap input {
+        font-size: 15px;
+        padding: 9px 10px;
+        width: 100%;
+      }
+      .proposta-ref-hint { display: none; }
+      /* Botão PDF: largura total */
       .btn-pdf {
         width: 100%;
         justify-content: center;
-        padding: 11px 20px;
-        font-size: 12px;
+        padding: 13px 20px;
+        font-size: 12.5px;
         margin-left: 0;
+        border-radius: 10px;
+        letter-spacing: 0.04em;
       }
 
-      /* ── Proposta input widgets ────────────────────── */
-      .prop-input-widget { width: 100%; }
-      .prop-input-widget input {
-        font-size: 13px;
-        padding: 9px 6px 9px 10px;
+      /* ── Economia strip: grade 2×2 ───────────────────── */
+      .economia-strip {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-bottom: 16px;
       }
+      .econ-card {
+        padding: 12px 14px;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .econ-label { font-size: 9.5px; line-height: 1.4; }
+      .econ-value { font-size: clamp(15px, 4vw, 20px); }
+      .econ-sub   { font-size: 9px; }
+
+      /* ── Taxas Oferecidas: tabela fluida ─────────────── */
+      .input-table tbody td { padding: 9px 12px; }
+      .input-table thead th { padding: 10px 12px; }
+      .input-cell { width: auto; }
+      .prop-input-widget {
+        width: 100%;
+        min-width: 0;
+      }
+      .prop-input-widget input {
+        font-size: 14px;
+        padding: 9px 6px 9px 10px;
+        width: 100%;
+        min-width: 0;
+      }
+      .prop-input-suffix { font-size: 12px; padding: 0 8px 0 4px; flex-shrink: 0; }
+      .row-label { font-size: 11.5px; width: 100px; }
+
+      /* ── Comparativo TAXA: card-view ─────────────────── */
+      .comp-table { display: block; }
+      .comp-table thead { display: none; }
+      .comp-table tbody { display: block; padding: 12px; gap: 8px; }
+
+      /* Cada linha vira um card */
+      .comp-table tbody tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        margin-bottom: 8px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: linear-gradient(160deg, var(--card-from), var(--card-to));
+        box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+      }
+      /* Faixa: cabeçalho do card */
+      .comp-table tbody tr td:first-child {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 7px 14px;
+        background: rgba(255,255,255,0.04);
+        border-bottom: 1px solid var(--border);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-soft);
+      }
+      /* Células de dados */
+      .comp-table tbody tr td:not(:first-child) {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 8px 12px;
+        text-align: center;
+        gap: 4px;
+      }
+      .comp-table tbody tr td:nth-child(4),
+      .comp-table tbody tr td:nth-child(5) {
+        border-top: 1px solid var(--border);
+      }
+      .comp-table tbody tr td:nth-child(3),
+      .comp-table tbody tr td:nth-child(5) {
+        border-left: 1px solid var(--border);
+      }
+      .comp-table tbody tr td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 8.5px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        line-height: 1.2;
+        margin-bottom: 5px;
+      }
+      .comp-table tbody tr.comp-section-divider {
+        display: block;
+        margin-bottom: 4px;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+      .comp-table tbody tr.comp-section-divider td {
+        background: transparent;
+        border: none;
+      }
+
+      /* Badges */
+      .comp-cet    { min-width: unset; width: 100%; font-size: 12px; padding: 4px 8px; border-radius: 6px; }
+      .delta-badge { font-size: 10px; padding: 2px 7px; width: 100%; justify-content: center; }
+      .saving-brl  { font-size: 9.5px; margin-top: 2px; }
     }
 
     /* ─── RESPONSIVE — SMALL MOBILE (≤ 480px) ─────────── */
     @media (max-width: 480px) {
-      /* Navbar: mostrar só ícone + links, sem logo-text se muito apertado */
       .logo-sub { display: none; }
 
-      /* KPI em coluna única no mobile pequeno */
       .kpi-strip { grid-template-columns: 1fr 1fr; gap: 8px; }
       .kpi-value { font-size: 16px; }
 
-      /* Economia: 1 coluna */
       .economia-strip { grid-template-columns: 1fr 1fr; }
 
-      /* Profile bar: labels somem, só botões */
       .profile-bar-label { display: none; }
 
-      /* Brand pills: texto menor */
       .brand-pill { font-size: 10px; padding: 4px 9px; }
 
-      /* Input widgets: ajuste fino */
       .input-widget { width: 84px; }
       .input-widget input { width: 50px; font-size: 12px; }
 
-      /* Page title menor */
       .page-title { font-size: clamp(18px, 5.5vw, 24px); }
 
-      /* sim brand toggle: full width */
       .sim-brand-toggle { width: 100%; }
       .sim-brand-btn { flex: 1; justify-content: center; }
 
-      /* Proposta: economia em coluna única no mobile pequeno */
-      .economia-strip { grid-template-columns: 1fr 1fr; }
-      .econ-value { font-size: clamp(12px, 3vw, 15px); }
+      .econ-value { font-size: clamp(13px, 3.8vw, 16px); }
+      .econ-label { font-size: 9px; }
+      .proposta-ref-input-wrap input { font-size: 14px; }
+      .proposta-ref-label { font-size: 10px; }
     }
 
     /* ─── iOS SAFE AREA (notch / home indicator) ────────── */
@@ -1581,6 +1627,7 @@
       border: 1px solid rgba(6,182,212,0.25);
       background: rgba(15,23,42,0.7);
       width: 200px;
+      max-width: 100%;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .proposta-ref-input-wrap:focus-within {
@@ -1610,6 +1657,14 @@
       flex: 1;
     }
     .proposta-ref-hint strong { color: var(--text-soft); font-weight: 600; }
+
+    /* wrapper interno para label+input */
+    .proposta-ref-bar-row1 {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
 
     /* ── Proposta: PDF button ──────────────────────── */
     .btn-pdf {
@@ -2411,14 +2466,16 @@
 
   <!-- ── VALOR DE REFERÊNCIA + PDF BUTTON ──────────── -->
   <div class="proposta-ref-bar">
-    <span class="proposta-ref-label">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.5" stroke="currentColor" stroke-opacity=".4"/><path d="M7 4v3l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-      Valor de Referência
-    </span>
-    <div class="proposta-ref-input-wrap">
-      <span class="proposta-ref-prefix">R$</span>
-      <input type="number" id="prop_ref_valor" step="100" min="0" placeholder="10.000,00"
-             oninput="calcProposta()" />
+    <div class="proposta-ref-bar-row1">
+      <span class="proposta-ref-label">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.5" stroke="currentColor" stroke-opacity=".4"/><path d="M7 4v3l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Valor de Referência
+      </span>
+      <div class="proposta-ref-input-wrap">
+        <span class="proposta-ref-prefix">R$</span>
+        <input type="number" id="prop_ref_valor" step="100" min="0" placeholder="10.000,00"
+               oninput="calcProposta()" />
+      </div>
     </div>
     <span class="proposta-ref-hint">
       Informe um valor de referência para calcular a <strong>economia estimada em R$</strong> por faixa de parcelamento.
