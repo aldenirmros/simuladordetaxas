@@ -1964,18 +1964,18 @@
   <div class="profile-bar">
     <span class="profile-bar-label">Perfil de Cálculo:</span>
     <div class="profile-toggle" id="profile-toggle">
-      <button class="profile-btn active" data-profile="universal" onclick="setProfile('universal', this)">
+      <button class="profile-btn active" data-profile="universal" onclick="setProfileDash('universal', this)">
         <span class="profile-btn-dot"></span>
         Universal
         <span class="profile-badge">Padrão</span>
       </button>
-      <button class="profile-btn" data-profile="mercadopago" onclick="setProfile('mercadopago', this)">
+      <button class="profile-btn" data-profile="mercadopago" onclick="setProfileDash('mercadopago', this)">
         <span class="profile-btn-dot"></span>
         Mercado Pago
       </button>
-      <button class="profile-btn" data-profile="pagbank" onclick="setProfile('pagbank', this)">
+      <button class="profile-btn" data-profile="pagbank" onclick="setProfileDash('pagbank', this)">
         <span class="profile-btn-dot"></span>
-        PagBank
+        PagBank / REDE
       </button>
     </div>
 
@@ -2422,6 +2422,26 @@
     </div>
   </div>
 
+  <!-- ── PROFILE TOGGLE BAR (espelhada da Dashboard) ──── -->
+  <div class="profile-bar" id="profile-bar-proposta">
+    <span class="profile-bar-label">Perfil de Cálculo:</span>
+    <div class="profile-toggle" id="profile-toggle-proposta">
+      <button class="profile-btn active" data-profile="universal" onclick="setProfileProposta('universal', this)">
+        <span class="profile-btn-dot"></span>
+        Universal
+        <span class="profile-badge">Padrão</span>
+      </button>
+      <button class="profile-btn" data-profile="mercadopago" onclick="setProfileProposta('mercadopago', this)">
+        <span class="profile-btn-dot"></span>
+        Mercado Pago
+      </button>
+      <button class="profile-btn" data-profile="pagbank" onclick="setProfileProposta('pagbank', this)">
+        <span class="profile-btn-dot"></span>
+        PagBank / REDE
+      </button>
+    </div>
+  </div>
+
   <!-- ── VALOR DE REFERÊNCIA + PDF BUTTON ──────────── -->
   <div class="proposta-ref-bar">
     <div class="proposta-ref-bar-row1">
@@ -2730,16 +2750,34 @@
     btn.classList.add('active');
   }
 
-  // ── PERFIL ATIVO ────────────────────────────────────
-  let activeProfile = 'universal'; // 'universal' | 'mercadopago' | 'pagbank'
+  // ── PERFIS ATIVOS ───────────────────────────────────
+  // Dashboard e Proposta têm perfis INDEPENDENTES
+  let activeProfile         = 'universal'; // perfil do Dashboard
+  let activePropostaProfile = 'universal'; // perfil da Proposta (independente)
 
-  function setProfile(profile, btn) {
+  /** Altera o perfil do DASHBOARD (não afeta a Proposta) */
+  function setProfileDash(profile, btn) {
     activeProfile = profile;
-    document.querySelectorAll('.profile-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+    document.querySelectorAll('#profile-toggle .profile-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll(`#profile-toggle .profile-btn[data-profile="${profile}"]`).forEach(b => b.classList.add('active'));
     calculate();
     simularVenda();
+    // Recalcula proposta se estiver visível (TAXA Atual usa perfil do Dashboard)
+    if (document.getElementById('view-proposta').classList.contains('active')) {
+      calcProposta();
+    }
   }
+
+  /** Altera o perfil da PROPOSTA (não afeta o Dashboard) */
+  function setProfileProposta(profile, btn) {
+    activePropostaProfile = profile;
+    document.querySelectorAll('#profile-toggle-proposta .profile-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll(`#profile-toggle-proposta .profile-btn[data-profile="${profile}"]`).forEach(b => b.classList.add('active'));
+    calcProposta();
+  }
+
+  // Mantido por compatibilidade — aponta para setProfileDash
+  function setProfile(profile, btn) { setProfileDash(profile, btn); }
 
   function val(id) {
     const v = parseFloat(document.getElementById(id).value);
@@ -2755,7 +2793,7 @@
    * Mercado Pago:
    *   (ant × N) + taxa
    *
-   * PagBank:
+   * PagBank / REDE:
    *   igual ao Universal, EXCETO crédito à vista (N=1):
    *   apenas MDR, sem antecipação
    */
@@ -2769,7 +2807,7 @@
     }
 
     if (profile === 'pagbank') {
-      if (N === 1) return taxa; // à vista: só MDR, sem antecipação
+      if (N === 1) return taxa; // à vista: só MDR, sem antecipação (PagBank / REDE)
       return taxa + ant * (1 - taxa / 100) * (N + 1) / 2;
     }
 
@@ -2794,8 +2832,8 @@
       const r13a18 = val(`${b}_13a18`);
       const ant    = val(`${b}_ant`);
 
-      // Débito: liquidação imediata, sem prazo de recebimento
-      setCell(`cet_${b}_deb`, 0);
+      // Débito: liquidação imediata — exibe o MDR bruto (sem antecipação)
+      setCell(`cet_${b}_deb`, deb);
 
       // Crédito à vista (N=1)
       setCell(`cet_${b}_cred`, calcCET(cred, ant, 1));
@@ -2809,7 +2847,13 @@
   }
 
   document.querySelectorAll('input[type=number]').forEach(inp => {
-    inp.addEventListener('input', calculate);
+    inp.addEventListener('input', function() {
+      calculate();
+      // Recalcula a Proposta em tempo real quando ela estiver visível
+      if (document.getElementById('view-proposta').classList.contains('active')) {
+        calcProposta();
+      }
+    });
   });
 
   calculate();
@@ -3046,32 +3090,34 @@ Responda em português, de forma objetiva e bem estruturada com seções claras.
 
   /**
    * Retorna TAXA atual do Dashboard para (brand, N)
+   * O parâmetro `profile` é sempre passado pelo chamador — sem leitura de variável global.
    *   brand: 'vm' | 'elo'
    */
-  function getCETDash(brand, N) {
+  function getCETDash(brand, N, profile) {
     const mdr  = N === 0 ? dashVal(`${brand}_deb`)
                : N === 1 ? dashVal(`${brand}_cred`)
                : N <= 6  ? dashVal(`${brand}_2a6`)
                : N <= 12 ? dashVal(`${brand}_7a12`)
                :            dashVal(`${brand}_13a18`);
     const ant  = dashVal(`${brand}_ant`);
-    if (N === 0) return 0;
-    return calcCET(mdr, ant, N);
+    if (N === 0) return mdr;
+    return calcCET(mdr, ant, N, profile);
   }
 
   /**
    * Retorna TAXA ofertada para (brand_prefix, N)
+   * O parâmetro `profile` é sempre passado pelo chamador — sem leitura de variável global.
    *   brand_prefix: 'pvm' | 'pelo'
    */
-  function getCETOffer(prefix, N) {
+  function getCETOffer(prefix, N, profile) {
     const mdr  = N === 0 ? propVal(`${prefix}_deb`)
                : N === 1 ? propVal(`${prefix}_cred`)
                : N <= 6  ? propVal(`${prefix}_2a6`)
                : N <= 12 ? propVal(`${prefix}_7a12`)
                :            propVal(`${prefix}_13a18`);
     const ant  = propVal(`${prefix}_ant`);
-    if (N === 0) return 0;
-    return calcCET(mdr, ant, N);
+    if (N === 0) return mdr;
+    return calcCET(mdr, ant, N, profile);
   }
 
   function buildDeltaBadge(diff, refValor) {
@@ -3106,11 +3152,11 @@ Responda em português, de forma objetiva e bem estruturada com seções claras.
     </tr>`;
   }
 
-  function buildRow(label, nVM, nElo, refValor) {
-    const cetVMDash  = getCETDash('vm',  nVM);
-    const cetVMOffer = getCETOffer('pvm', nVM);
-    const cetElDash  = getCETDash('elo',  nElo);
-    const cetElOffer = getCETOffer('pelo', nElo);
+  function buildRow(label, nVM, nElo, refValor, dashProfile, offerProfile) {
+    const cetVMDash  = getCETDash('vm',  nVM,  dashProfile);
+    const cetVMOffer = getCETOffer('pvm', nVM,  offerProfile);
+    const cetElDash  = getCETDash('elo', nElo, dashProfile);
+    const cetElOffer = getCETOffer('pelo', nElo, offerProfile);
 
     const diffVM = cetVMOffer - cetVMDash;
     const diffEl = cetElOffer - cetElDash;
@@ -3140,36 +3186,40 @@ Responda em português, de forma objetiva e bem estruturada com seções claras.
   }
 
   function calcProposta() {
-    const refValor = parseFloat(document.getElementById('prop_ref_valor').value) || 0;
-    const tbody = document.getElementById('comp-tbody');
+    const refValor     = parseFloat(document.getElementById('prop_ref_valor').value) || 0;
+    const tbody        = document.getElementById('comp-tbody');
     if (!tbody) return;
 
+    // Captura os perfis no momento do cálculo — sem dependência de variáveis globais nos filhos
+    const dashProfile  = activeProfile;           // TAXA Atual  → perfil do Dashboard
+    const offerProfile = activePropostaProfile;   // TAXA Oferta → perfil da Proposta
+
+    const row = (label, nVM, nElo) =>
+      buildRow(label, nVM, nElo, refValor, dashProfile, offerProfile);
+
     let html = '';
+    html += row('Débito', 0, 0);
+    html += row('Crédito', 1, 1);
 
-    // Débito
-    html += buildRow('Débito', 0, 0, refValor);
-    // Crédito
-    html += buildRow('Crédito', 1, 1, refValor);
-
-    // 2x–6x
     html += buildSectionRow('Parcelado 2x – 6x', 5);
-    for (let n = 2; n <= 6; n++) html += buildRow(n + 'x', n, n, refValor);
+    for (let n = 2; n <= 6; n++) html += row(n + 'x', n, n);
 
-    // 7x–12x
     html += buildSectionRow('Parcelado 7x – 12x', 5);
-    for (let n = 7; n <= 12; n++) html += buildRow(n + 'x', n, n, refValor);
+    for (let n = 7; n <= 12; n++) html += row(n + 'x', n, n);
 
-    // 13x–18x
     html += buildSectionRow('Parcelado 13x – 18x', 5);
-    for (let n = 13; n <= 18; n++) html += buildRow(n + 'x', n, n, refValor);
+    for (let n = 13; n <= 18; n++) html += row(n + 'x', n, n);
 
     tbody.innerHTML = html;
 
-    // Totalizadores de economia
-    updateEconomia(refValor);
+    updateEconomia(refValor, dashProfile, offerProfile);
   }
 
-  function updateEconomia(refValor) {
+  function updateEconomia(refValor, dashProfile, offerProfile) {
+    // Usa os perfis explícitos; fallback para as globais quando chamado externamente
+    const dp = dashProfile  || activeProfile;
+    const op = offerProfile || activePropostaProfile;
+
     const fmt = (v, isNeg) => {
       if (refValor <= 0 || Math.abs(v) < 0.0001) return '—';
       const brl = Math.abs(v) * refValor / 100;
@@ -3177,16 +3227,16 @@ Responda em português, de forma objetiva e bem estruturada com seções claras.
     };
 
     // VM crédito (N=1)
-    const diffVMCred = getCETOffer('pvm', 1) - getCETDash('vm', 1);
+    const diffVMCred = getCETOffer('pvm', 1, op) - getCETDash('vm', 1, dp);
     // VM parcelado (média 2–18)
     let sumVM = 0;
-    for (let n = 2; n <= 18; n++) sumVM += (getCETOffer('pvm', n) - getCETDash('vm', n));
+    for (let n = 2; n <= 18; n++) sumVM += (getCETOffer('pvm', n, op) - getCETDash('vm', n, dp));
     const avgVM = sumVM / 17;
     // Elo crédito (N=1)
-    const diffElCred = getCETOffer('pelo', 1) - getCETDash('elo', 1);
+    const diffElCred = getCETOffer('pelo', 1, op) - getCETDash('elo', 1, dp);
     // Elo parcelado
     let sumEl = 0;
-    for (let n = 2; n <= 18; n++) sumEl += (getCETOffer('pelo', n) - getCETDash('elo', n));
+    for (let n = 2; n <= 18; n++) sumEl += (getCETOffer('pelo', n, op) - getCETDash('elo', n, dp));
     const avgEl = sumEl / 17;
 
     function setEcon(id, diff) {
@@ -3251,6 +3301,10 @@ Responda em português, de forma objetiva e bem estruturada com seções claras.
       elo: { deb: propVal('pelo_deb'), cred: propVal('pelo_cred'), r2a6: propVal('pelo_2a6'), r7a12: propVal('pelo_7a12'), r13a18: propVal('pelo_13a18'), ant: propVal('pelo_ant') },
     };
 
+    // Captura perfis no momento da geração do PDF
+    const pdfDashProfile  = activeProfile;
+    const pdfOfferProfile = activePropostaProfile;
+
     // Calcula total de economia
     let totalEconVM = 0, totalEconElo = 0;
     const rows = [];
@@ -3258,10 +3312,10 @@ Responda em português, de forma objetiva e bem estruturada com seções claras.
 
     for (let i = 0; i < labels.length; i++) {
       const n = i === 0 ? 0 : i === 1 ? 1 : i;
-      const vmD = getCETDash('vm',  n);
-      const vmO = getCETOffer('pvm', n);
-      const elD = getCETDash('elo', n);
-      const elO = getCETOffer('pelo', n);
+      const vmD = getCETDash('vm',  n, pdfDashProfile);
+      const vmO = getCETOffer('pvm', n, pdfOfferProfile);
+      const elD = getCETDash('elo', n, pdfDashProfile);
+      const elO = getCETOffer('pelo', n, pdfOfferProfile);
       const dvM = vmO - vmD;
       const dvE = elO - elD;
       if (n > 1) { totalEconVM += dvM; totalEconElo += dvE; }
