@@ -1227,19 +1227,221 @@
       transition: background 0.35s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.3s ease;
     }
 
-    /* ─── RESPONSIVE ───────────────────────────────── */
+    /* ─── RESPONSIVE — TABLET (≤ 1100px) ──────────────── */
     @media (max-width: 1100px) {
       .main-grid { grid-template-columns: 1fr; }
       .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+      .proposta-grid { grid-template-columns: 1fr; }
+      .economia-strip { grid-template-columns: repeat(2, 1fr); }
     }
-    @media (max-width: 700px) {
-      .page-wrapper { padding: 72px 16px 48px; }
-      .kpi-strip { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-      .page-header { flex-direction: column; align-items: flex-start; gap: 14px; }
-      .navbar-nav { display: none; }
-      .input-widget { width: 90px; }
-      .input-widget input { width: 55px; font-size: 12px; }
+
+    /* ─── RESPONSIVE — MOBILE (≤ 768px) ───────────────── */
+    @media (max-width: 768px) {
+
+      /* ── Navbar mobile ─────────────────────────────── */
+      .navbar { padding: 0 14px; gap: 0; }
+      .navbar-meta { display: none; }          /* oculta status dot */
+      .logo-name { font-size: 13px; }
+      .logo-sub  { font-size: 9px; }
+
+      /* Nav links: compactar mas manter visíveis */
+      .navbar-nav { gap: 2px; }
+      .nav-item {
+        padding: 6px 10px;
+        font-size: 11.5px;
+        letter-spacing: 0;
+      }
+      /* Remove o dot indicator no active para economizar espaço */
+      .nav-item.active::before { display: none; }
+
+      /* ── Page wrapper ──────────────────────────────── */
+      .page-wrapper { padding: 70px 12px 44px; }
+
+      /* ── Page header ───────────────────────────────── */
+      .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+      }
+      .page-title { font-size: clamp(20px, 6vw, 28px); }
+      .page-desc  { font-size: 12px; }
+      .breadcrumb { font-size: 10px; }
+      .page-header-right { align-self: flex-start; }
+      .header-badge { font-size: 10px; padding: 5px 10px; }
+
+      /* ── KPI strip ─────────────────────────────────── */
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 18px; }
+      .kpi-card  { padding: 14px 14px; }
+      .kpi-value { font-size: clamp(16px, 4.5vw, 20px); }
+      .kpi-label { font-size: 9.5px; }
+
+      /* ── Profile / theme bar ───────────────────────── */
+      .profile-bar { gap: 8px; margin-bottom: 14px; }
+      .profile-bar-label { font-size: 10px; }
+      .profile-btn {
+        padding: 10px 14px;   /* maior área de toque */
+        font-size: 11.5px;
+      }
+      .theme-bar-label { display: none; }
+      .theme-btn { width: 30px; height: 30px; }  /* toque confortável */
+
+      /* ── Cards ─────────────────────────────────────── */
+      .bi-card { border-radius: 10px; }
+      .card-header { padding: 12px 14px; }
+      .card-title  { font-size: 12px; }
+      .card-subtitle { font-size: 10.5px; }
+
+      /* ── Input table (Taxas de Entrada) ────────────── */
+      /* Scroll horizontal com indicador iOS-friendly */
+      .bi-card > .input-table,
+      .bi-card > table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+      }
+      /* Inputs ligeiramente maiores para polegar */
+      .input-widget { width: 96px; }
+      .input-widget input {
+        width: 58px;
+        font-size: 13px;
+        padding: 9px 5px 9px 8px;
+      }
+      .input-suffix { font-size: 11px; }
+      .row-label {
+        font-size: 11px;
+        width: 110px;
+        white-space: nowrap;  /* faixas "2x", "3x" nunca quebram */
+      }
+
+      /* ── Result table (TAXA) ────────────────────────── */
+      .result-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        /* Sombra lateral indicando scroll */
+        background:
+          linear-gradient(to right, var(--card-from) 30%, transparent),
+          linear-gradient(to left,  var(--card-from) 30%, transparent) right,
+          linear-gradient(to right, rgba(6,182,212,0.15), transparent),
+          linear-gradient(to left,  rgba(6,182,212,0.15), transparent) right;
+        background-size: 40px 100%, 40px 100%, 14px 100%, 14px 100%;
+        background-repeat: no-repeat;
+        background-attachment: local, local, scroll, scroll;
+      }
+      .result-table { min-width: 380px; }
+      .result-table tbody td { padding: 9px 12px; }
+      .result-table thead th { padding: 10px 12px; }
+      .cet-value { min-width: 72px; font-size: 12px; padding: 4px 9px; }
+
+      /* ── Comparativo table (Proposta) ──────────────── */
+      .comp-table { min-width: 580px; }
+      .comp-cet   { min-width: 60px; font-size: 11px; padding: 3px 7px; }
+      .delta-badge { font-size: 10px; padding: 2px 7px; }
+      .saving-brl  { font-size: 9.5px; }
+
+      /* ── Economia strip ────────────────────────────── */
+      .economia-strip { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
+      .econ-card { padding: 11px 12px; border-radius: 8px; }
+      .econ-label { font-size: 9px; }
+      .econ-value { font-size: clamp(13px, 3.5vw, 17px); }
+
+      /* ── Proposta ref bar ──────────────────────────── */
+      .proposta-ref-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 14px 14px;
+      }
+      .proposta-ref-input-wrap { width: 100%; max-width: 300px; }
+      .proposta-ref-hint { font-size: 11px; }
+      .btn-pdf {
+        width: 100%;
+        justify-content: center;
+        padding: 11px 20px;  /* toque confortável */
+        font-size: 12px;
+      }
+
+      /* ── Proposta input widgets ────────────────────── */
+      .prop-input-widget { width: 100%; }
+      .prop-input-widget input {
+        font-size: 13px;
+        padding: 9px 6px 9px 10px;
+      }
+
+      /* ── Descobrir Taxa / Simular Venda ────────────── */
+      .taxa-body  { flex-direction: column; align-items: flex-start; padding: 16px; }
+      .taxa-sep   { width: 100%; height: 1px; margin: 16px 0; }
+      .taxa-results { flex-wrap: wrap; }
+      .taxa-result-value { font-size: 20px; }
+      .taxa-result-highlight .taxa-result-value { font-size: 26px; }
+      .taxa-input-wrap { width: 100%; max-width: 280px; }
+
+      .sim-body { flex-direction: column; align-items: flex-start; padding: 16px; }
+      .sim-vsep { width: 100%; height: 1px; margin: 16px 0; }
+      .sim-highlight { font-size: 26px; }
+      .sim-input-wrap { width: 100%; max-width: 280px; }
+      .sim-field-parc { width: 100%; }
+      .sim-inputs-group { gap: 14px; }
+
+      /* ── Footer ────────────────────────────────────── */
+      .page-footer { flex-direction: column; gap: 8px; align-items: flex-start; margin-top: 28px; }
       .footer-formula { display: none; }
+
+      /* ── Modal PDF ─────────────────────────────────── */
+      .modal-box {
+        width: calc(100vw - 24px);
+        padding: 24px 18px;
+        border-radius: 14px;
+      }
+      .modal-title { font-size: 16px; }
+      .modal-desc  { font-size: 11.5px; }
+      .modal-input-wrap input { font-size: 18px; padding: 14px 16px; } /* área de toque grande */
+      .btn-cancel, .btn-confirm { padding: 13px 20px; font-size: 12.5px; flex: 1; }
+      .modal-actions { gap: 8px; }
+    }
+
+    /* ─── RESPONSIVE — SMALL MOBILE (≤ 480px) ─────────── */
+    @media (max-width: 480px) {
+      /* Navbar: mostrar só ícone + links, sem logo-text se muito apertado */
+      .logo-sub { display: none; }
+
+      /* KPI em coluna única no mobile pequeno */
+      .kpi-strip { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .kpi-value { font-size: 16px; }
+
+      /* Economia: 1 coluna */
+      .economia-strip { grid-template-columns: 1fr 1fr; }
+
+      /* Profile bar: labels somem, só botões */
+      .profile-bar-label { display: none; }
+
+      /* Brand pills: texto menor */
+      .brand-pill { font-size: 10px; padding: 4px 9px; }
+
+      /* Input widgets: ajuste fino */
+      .input-widget { width: 84px; }
+      .input-widget input { width: 50px; font-size: 12px; }
+
+      /* Page title menor */
+      .page-title { font-size: clamp(18px, 5.5vw, 24px); }
+
+      /* sim brand toggle: full width */
+      .sim-brand-toggle { width: 100%; }
+      .sim-brand-btn { flex: 1; justify-content: center; }
+    }
+
+    /* ─── iOS SAFE AREA (notch / home indicator) ────────── */
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+      .page-wrapper {
+        padding-bottom: calc(44px + env(safe-area-inset-bottom));
+      }
+      .navbar {
+        padding-left:  max(14px, env(safe-area-inset-left));
+        padding-right: max(14px, env(safe-area-inset-right));
+      }
     }
     /* ══════════════════════════════════════════════════
        ─── PROPOSTA COMERCIAL VIEW ───────────────────────
@@ -1583,15 +1785,7 @@
       body > *:not(#pdf-content) { display: none !important; }
     }
 
-    /* ── Responsive proposta ─────────────────────── */
-    @media (max-width: 1100px) {
-      .proposta-grid { grid-template-columns: 1fr; }
-      .economia-strip { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 700px) {
-      .economia-strip { grid-template-columns: repeat(2, 1fr); }
-      .proposta-ref-bar { flex-direction: column; align-items: flex-start; }
-    }
+    /* ── Responsive proposta — já coberto pelo bloco global acima ─── */
   </style>
 </head>
 <body>
