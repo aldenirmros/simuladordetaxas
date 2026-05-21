@@ -1,0 +1,3077 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FEE Simulator · Dashboard AFM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0b0e14;
+      --surface:     #111827;
+      --card-from:   #1e293b;
+      --card-to:     #0f172a;
+      --border:      rgba(255,255,255,0.08);
+      --border-glow: rgba(6,182,212,0.25);
+      --navy:        #0f172a;
+      --cyan:        #06b6d4;
+      --cyan-dim:    rgba(6,182,212,0.12);
+      --cyan-glow:   rgba(6,182,212,0.08);
+      --vm:          #3b82f6;
+      --vm-dim:      rgba(59,130,246,0.15);
+      --elo:         #f59e0b;
+      --elo-dim:     rgba(245,158,11,0.12);
+      --text:        #e2e8f0;
+      --text-soft:   #94a3b8;
+      --text-muted:  #475569;
+      --positive:    #34d399;
+      --negative:    #f87171;
+      --font-ui:     'Inter', sans-serif;
+      --font-display:'Syne', sans-serif;
+      --font-mono:   'DM Mono', monospace;
+    }
+
+    /* ─── RESET & BASE ─────────────────────────────── */
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Subtle dot-grid background */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: radial-gradient(circle, rgba(148,163,184,0.07) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none; z-index: 0;
+    }
+
+    /* Ambient glow blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none; z-index: 0;
+      filter: blur(80px);
+    }
+    .blob-1 { width:600px; height:600px; top:-180px; left:-180px;
+               background: radial-gradient(circle, rgba(6,182,212,0.07) 0%, transparent 70%); }
+    .blob-2 { width:500px; height:500px; bottom:-150px; right:-150px;
+               background: radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%); }
+    .blob-3 { width:400px; height:400px; top:50%; left:50%; transform:translate(-50%,-50%);
+               background: radial-gradient(circle, rgba(6,182,212,0.04) 0%, transparent 70%); }
+
+    /* ─── NAVBAR ───────────────────────────────────── */
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 60px;
+      background: rgba(15,23,42,0.85);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 28px;
+      z-index: 100;
+      gap: 0;
+    }
+
+    .navbar-logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; flex-shrink: 0;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--cyan) 0%, #0284c7 100%);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 20px rgba(6,182,212,0.35);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .logo-text {
+      display: flex; flex-direction: column; line-height: 1.1;
+    }
+    .logo-name {
+      font-family: var(--font-display);
+      font-size: 14px; font-weight: 800;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+    .logo-sub {
+      font-size: 10px; font-weight: 500;
+      color: var(--cyan);
+      letter-spacing: 0.1em; text-transform: uppercase;
+    }
+
+    .navbar-spacer { flex: 1; }
+
+    .navbar-nav {
+      display: flex; align-items: center; gap: 4px;
+    }
+
+    .nav-item {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12.5px; font-weight: 500;
+      color: var(--text-soft);
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s, background 0.2s;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+    .nav-item.active {
+      color: var(--cyan);
+      background: var(--cyan-dim);
+    }
+    .nav-item.active::before {
+      content: '';
+      display: inline-block; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      margin-right: 7px; vertical-align: middle;
+    }
+
+    .navbar-meta {
+      display: flex; align-items: center; gap: 10px;
+      margin-left: 20px; padding-left: 20px;
+      border-left: 1px solid var(--border);
+    }
+
+    .status-dot {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 500; color: var(--text-soft);
+    }
+    .status-dot::before {
+      content: '';
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--positive);
+      box-shadow: 0 0 8px var(--positive);
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.5; }
+    }
+
+    /* ─── PAGE LAYOUT ──────────────────────────────── */
+    .page-wrapper {
+      position: relative; z-index: 1;
+      padding: 80px 28px 60px;
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+
+    /* ─── PAGE HEADER ──────────────────────────────── */
+    .page-header {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      animation: fadeDown 0.5s ease both;
+    }
+
+    .page-header-left {}
+    .breadcrumb {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.15em; text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 8px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .breadcrumb-sep { color: var(--text-muted); }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-size: clamp(24px, 3.5vw, 38px);
+      font-weight: 800; letter-spacing: -0.03em;
+      color: var(--text); line-height: 1.1;
+    }
+    .page-title span { color: var(--cyan); }
+
+    .page-desc {
+      margin-top: 6px;
+      font-size: 13.5px; color: var(--text-soft);
+      font-weight: 400;
+    }
+
+    .page-header-right {
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .header-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .header-badge.formula {
+      background: rgba(6,182,212,0.1);
+      border: 1px solid rgba(6,182,212,0.3);
+      color: var(--cyan);
+    }
+    .header-badge.realtime {
+      background: rgba(52,211,153,0.1);
+      border: 1px solid rgba(52,211,153,0.3);
+      color: var(--positive);
+    }
+
+    /* ─── KPI STRIP ────────────────────────────────── */
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+      animation: fadeUp 0.5s 0.05s ease both;
+    }
+
+    .kpi-card {
+      background: linear-gradient(145deg, var(--card-from), var(--card-to));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      position: relative; overflow: hidden;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .kpi-card:hover {
+      border-color: rgba(6,182,212,0.2);
+      box-shadow: 0 4px 24px rgba(6,182,212,0.08);
+    }
+    .kpi-card::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .kpi-card:hover::after { opacity: 0.6; }
+
+    .kpi-label {
+      font-size: 10.5px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 10px;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .kpi-icon {
+      width: 22px; height: 22px; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+    }
+
+    .kpi-value {
+      font-family: var(--font-mono);
+      font-size: 22px; font-weight: 500;
+      color: var(--text); letter-spacing: -0.02em;
+    }
+    .kpi-sub {
+      font-size: 11px; color: var(--text-muted); margin-top: 4px;
+    }
+
+    /* ─── MAIN GRID ────────────────────────────────── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 20px;
+      align-items: start;
+      animation: fadeUp 0.5s 0.1s ease both;
+    }
+
+    /* ─── CARD ─────────────────────────────────────── */
+    .bi-card {
+      background: linear-gradient(160deg, var(--card-from) 0%, var(--card-to) 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.2);
+      transition: box-shadow 0.3s;
+    }
+    .bi-card:hover {
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.3),
+                  0 0 0 1px rgba(6,182,212,0.08);
+    }
+
+    .card-header {
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.02);
+    }
+    .card-header-left {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-indicator {
+      width: 3px; height: 20px; border-radius: 2px;
+    }
+    .card-indicator.cyan { background: linear-gradient(180deg, var(--cyan), rgba(6,182,212,0.2)); }
+    .card-indicator.blue { background: linear-gradient(180deg, var(--vm), rgba(59,130,246,0.2)); }
+    .card-indicator.amber { background: linear-gradient(180deg, var(--elo), rgba(245,158,11,0.2)); }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text);
+    }
+    .card-subtitle {
+      font-size: 11px; color: var(--text-muted); margin-top: 2px;
+    }
+
+    .card-tag {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 100px;
+      background: var(--cyan-dim);
+      border: 1px solid rgba(6,182,212,0.2);
+      color: var(--cyan);
+    }
+
+    /* ─── INPUT TABLE ──────────────────────────────── */
+    .input-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .input-table thead th {
+      padding: 12px 18px;
+      text-align: center;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.01);
+    }
+    .input-table thead th:first-child { text-align: left; }
+
+    .input-table tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.15s;
+    }
+    .input-table tbody tr:last-child { border-bottom: none; }
+    .input-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+
+    /* Zebra rows */
+    .input-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+    .input-table tbody tr:nth-child(even):hover { background: rgba(255,255,255,0.035); }
+
+    .input-table tbody td {
+      padding: 10px 18px;
+      vertical-align: middle;
+      font-size: 12.5px;
+    }
+
+    .row-label {
+      color: var(--text-soft);
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      width: 130px;
+    }
+
+    .antecp-note {
+      font-size: 10px; color: var(--text-muted);
+      display: block; margin-top: 2px;
+      font-weight: 400; text-transform: none;
+      letter-spacing: 0;
+    }
+
+    /* Brand column headers */
+    .brand-th { text-align: center !important; }
+    .brand-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 100px;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .brand-pill.vm {
+      background: var(--vm-dim);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: #93c5fd;
+    }
+    .brand-pill.elo {
+      background: var(--elo-dim);
+      border: 1px solid rgba(245,158,11,0.3);
+      color: #fcd34d;
+    }
+    .brand-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+    }
+    .brand-dot.vm { background: var(--vm); box-shadow: 0 0 6px var(--vm); }
+    .brand-dot.elo { background: var(--elo); box-shadow: 0 0 6px var(--elo); }
+
+    /* ─── DATA INPUTS ──────────────────────────────── */
+    .input-cell { text-align: center; }
+
+    .input-widget {
+      display: inline-flex; align-items: stretch;
+      border-radius: 8px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(15,23,42,0.7);
+      width: 108px;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+    }
+
+    .input-widget:focus-within {
+      border-color: rgba(6,182,212,0.6);
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.1), 0 0 16px rgba(6,182,212,0.08);
+      transform: translateY(-1px);
+    }
+
+    .input-widget.vm-widget:focus-within {
+      border-color: rgba(59,130,246,0.6);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+    .input-widget.elo-widget:focus-within {
+      border-color: rgba(245,158,11,0.5);
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.1);
+    }
+
+    .input-widget input {
+      background: transparent; border: none; outline: none;
+      color: var(--text);
+      font-family: var(--font-mono); font-size: 14px; font-weight: 500;
+      width: 70px; padding: 8px 6px 8px 10px;
+      text-align: right;
+    }
+    .input-widget input::placeholder { color: var(--text-muted); }
+    .input-widget input::-webkit-inner-spin-button,
+    .input-widget input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .input-suffix {
+      display: flex; align-items: center;
+      padding: 0 9px 0 4px;
+      font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+      color: var(--text-muted);
+      user-select: none;
+    }
+    .input-widget.vm-widget:focus-within .input-suffix { color: #93c5fd; }
+    .input-widget.elo-widget:focus-within .input-suffix { color: #fcd34d; }
+
+    /* ─── RESULT TABLE ─────────────────────────────── */
+    .result-table-wrap { overflow-x: auto; }
+
+    .result-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .result-table thead th {
+      padding: 13px 20px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      background: rgba(255,255,255,0.01);
+    }
+    .result-table thead th:first-child {
+      text-align: left; width: 120px;
+    }
+
+    .result-table tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.12s;
+    }
+    .result-table tbody tr:last-child { border-bottom: none; }
+    .result-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+
+    /* Subtle zebra */
+    .result-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.012); }
+    .result-table tbody tr:nth-child(even):hover { background: rgba(255,255,255,0.03); }
+
+    .result-table tbody td {
+      padding: 11px 20px;
+      font-size: 12.5px; vertical-align: middle;
+    }
+
+    .result-table .row-label {
+      color: var(--text-soft);
+      font-weight: 600; font-size: 12px;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+
+    .cet-cell { text-align: center; }
+
+    /* CET value badge */
+    .cet-value {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 13px; font-weight: 500;
+      min-width: 84px; padding: 5px 12px;
+      border-radius: 7px;
+      border: 1px solid transparent;
+      transition: color 0.3s, background 0.3s, border-color 0.3s, box-shadow 0.3s;
+      letter-spacing: 0.02em;
+    }
+
+    .cet-value.zero {
+      color: var(--text-muted);
+      background: rgba(71,85,105,0.15);
+      border-color: rgba(71,85,105,0.2);
+    }
+    .cet-value.positive {
+      color: #34d399;
+      background: rgba(52,211,153,0.08);
+      border-color: rgba(52,211,153,0.2);
+    }
+    .cet-value.negative {
+      color: var(--negative);
+      background: rgba(248,113,113,0.08);
+      border-color: rgba(248,113,113,0.2);
+    }
+
+    /* Column-specific tint for active (non-zero) values */
+    td.vm-col .cet-value.positive {
+      color: #93c5fd;
+      background: rgba(59,130,246,0.1);
+      border-color: rgba(59,130,246,0.25);
+    }
+    td.elo-col .cet-value.positive {
+      color: #fcd34d;
+      background: rgba(245,158,11,0.1);
+      border-color: rgba(245,158,11,0.22);
+    }
+
+    /* ─── SECTION DIVIDER ──────────────────────────── */
+    .section-divider td {
+      padding: 0 !important;
+    }
+    .section-inner {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 20px;
+      background: rgba(6,182,212,0.04);
+      border-top: 1px solid rgba(6,182,212,0.08);
+      border-bottom: 1px solid rgba(6,182,212,0.08);
+    }
+    .section-inner span {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(6,182,212,0.55);
+      white-space: nowrap;
+    }
+    .section-line {
+      flex: 1; height: 1px;
+      background: rgba(6,182,212,0.1);
+    }
+
+    /* ─── FOOTER ───────────────────────────────────── */
+    .page-footer {
+      margin-top: 40px; padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      animation: fadeUp 0.5s 0.25s ease both;
+    }
+    .footer-copy {
+      font-size: 12px; color: var(--text-muted);
+    }
+    .footer-copy strong { color: var(--text-soft); font-weight: 600; }
+
+    .footer-formula {
+      font-family: var(--font-mono);
+      font-size: 11px; color: var(--text-muted);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      padding: 5px 12px; border-radius: 6px;
+    }
+    .footer-formula span { color: var(--cyan); }
+
+    /* ─── ANIMATIONS ───────────────────────────────── */
+    @keyframes fadeDown {
+      from { opacity:0; transform:translateY(-16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(16px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ─── DESCOBRIR TAXA CARD ──────────────────────── */
+    .taxa-body {
+      padding: 24px;
+      display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+    }
+
+    .taxa-inputs {
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+
+    .taxa-field {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+
+    .taxa-label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-soft); cursor: default;
+    }
+    .taxa-label-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+    .taxa-label-hint {
+      font-size: 10px; color: var(--text-muted);
+      font-weight: 400; text-transform: none; letter-spacing: 0;
+    }
+
+    .taxa-input-wrap {
+      display: inline-flex; align-items: stretch;
+      border-radius: 8px; overflow: hidden;
+      border: 1px solid rgba(167,139,250,0.2);
+      background: rgba(15,23,42,0.7);
+      width: 180px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .taxa-input-wrap:focus-within {
+      border-color: rgba(167,139,250,0.6);
+      box-shadow: 0 0 0 3px rgba(167,139,250,0.1), 0 0 16px rgba(167,139,250,0.07);
+    }
+    .taxa-prefix {
+      display: flex; align-items: center;
+      padding: 0 8px 0 12px;
+      font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+      color: var(--text-muted); user-select: none;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .taxa-input-wrap:focus-within .taxa-prefix { color: #c4b5fd; }
+    .taxa-input-wrap input {
+      background: transparent; border: none; outline: none;
+      color: var(--text);
+      font-family: var(--font-mono); font-size: 16px; font-weight: 500;
+      width: 100%; padding: 12px 12px;
+    }
+    .taxa-input-wrap input::placeholder { color: var(--text-muted); font-size: 14px; }
+    .taxa-input-wrap input::-webkit-inner-spin-button,
+    .taxa-input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    .taxa-divider-arrow {
+      padding-top: 24px; opacity: 0.7;
+    }
+
+    .taxa-sep {
+      width: 1px; height: 80px; flex-shrink: 0;
+      background: linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent);
+      margin: 0 32px;
+    }
+
+    .taxa-results {
+      display: flex; align-items: stretch; gap: 0; flex: 1; flex-wrap: wrap;
+    }
+
+    .taxa-result-item {
+      flex: 1; min-width: 160px;
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 8px 16px;
+    }
+
+    .taxa-result-sep {
+      width: 1px;
+      background: linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent);
+      margin: 4px 0;
+    }
+
+    .taxa-result-label {
+      font-size: 10.5px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .taxa-result-formula {
+      font-family: var(--font-mono); font-size: 10px;
+      color: var(--text-muted); margin-bottom: 6px;
+    }
+
+    .taxa-result-value {
+      font-family: var(--font-mono); font-size: 28px; font-weight: 500;
+      letter-spacing: -0.02em; line-height: 1;
+      transition: color 0.3s;
+    }
+
+    .taxa-result-highlight .taxa-result-value { font-size: 36px; }
+
+    .taxa-zero { color: var(--text-muted); font-size: 0.75em; }
+
+    .taxa-val-desconto { color: #f87171; }
+    .taxa-val-taxa     { color: #f87171; }
+    .taxa-val-taxa.positive { color: #34d399; }
+
+    @media (max-width: 900px) {
+      .taxa-body { flex-direction: column; align-items: flex-start; }
+      .taxa-sep  { width: 100%; height: 1px; margin: 20px 0; }
+      .taxa-result-value { font-size: 22px; }
+      .taxa-result-highlight .taxa-result-value { font-size: 28px; }
+    }
+
+    /* ─── AI KPI CARD ──────────────────────────────── */
+    .kpi-ai-card {
+      grid-column: span 1;
+      display: flex; flex-direction: column;
+      min-height: 130px;
+    }
+
+    .ai-prompt-area {
+      display: flex; flex-direction: column;
+      flex: 1; gap: 10px; margin-top: 8px;
+    }
+
+    .ai-output {
+      flex: 1;
+      font-size: 11.5px; line-height: 1.65;
+      color: var(--text-soft);
+      overflow-y: auto;
+      max-height: 260px;
+      padding-right: 4px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(6,182,212,0.2) transparent;
+    }
+    .ai-output::-webkit-scrollbar { width: 3px; }
+    .ai-output::-webkit-scrollbar-thumb { background: rgba(6,182,212,0.25); border-radius: 2px; }
+
+    .ai-placeholder { color: var(--text-muted); font-style: italic; font-size: 11px; }
+
+    /* Markdown-style output */
+    .ai-output h3 {
+      font-family: var(--font-display); font-size: 11px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--cyan); margin: 10px 0 5px;
+    }
+    .ai-output h3:first-child { margin-top: 0; }
+    .ai-output p { margin-bottom: 6px; }
+    .ai-output code {
+      font-family: var(--font-mono); font-size: 11px;
+      background: rgba(6,182,212,0.08);
+      border: 1px solid rgba(6,182,212,0.15);
+      color: #67e8f9; padding: 2px 6px; border-radius: 4px;
+    }
+    .ai-output pre {
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(6,182,212,0.15);
+      border-radius: 6px; padding: 8px 10px;
+      margin: 6px 0; overflow-x: auto;
+    }
+    .ai-output pre code {
+      background: none; border: none; padding: 0;
+      font-size: 10.5px; color: #a5f3fc;
+      white-space: pre;
+    }
+    .ai-output ul { padding-left: 14px; margin: 4px 0 6px; }
+    .ai-output li { margin-bottom: 3px; }
+    .ai-output strong { color: var(--text); font-weight: 600; }
+
+    .ai-btn {
+      align-self: flex-start;
+      background: linear-gradient(135deg, rgba(6,182,212,0.18), rgba(6,182,212,0.08));
+      border: 1px solid rgba(6,182,212,0.35);
+      color: var(--cyan);
+      font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 6px 14px; border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+    }
+    .ai-btn:hover {
+      background: linear-gradient(135deg, rgba(6,182,212,0.28), rgba(6,182,212,0.14));
+      box-shadow: 0 0 14px rgba(6,182,212,0.2);
+      transform: translateY(-1px);
+    }
+    .ai-btn:active { transform: translateY(0); }
+    .ai-btn:disabled {
+      opacity: 0.5; cursor: not-allowed; transform: none;
+    }
+
+    .ai-typing-cursor::after {
+      content: '▋';
+      animation: blink 0.7s step-end infinite;
+      color: var(--cyan); margin-left: 2px;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* ─── SIMULAR VENDA CARD ───────────────────────── */
+    .sim-body {
+      padding: 24px;
+      display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+    }
+
+    .sim-inputs-group {
+      display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap;
+    }
+
+    .sim-field { display: flex; flex-direction: column; gap: 8px; }
+
+    .sim-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-soft);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .sim-label-hint {
+      font-size: 10px; color: var(--text-muted);
+      font-weight: 400; text-transform: none; letter-spacing: 0;
+    }
+
+    /* brand toggle */
+    .sim-brand-toggle {
+      display: flex; border-radius: 8px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .sim-brand-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 16px;
+      background: rgba(255,255,255,0.02);
+      border: none; cursor: pointer;
+      font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+      color: var(--text-muted);
+      transition: background 0.2s, color 0.2s;
+    }
+    .sim-brand-btn + .sim-brand-btn {
+      border-left: 1px solid rgba(255,255,255,0.06);
+    }
+    .sim-brand-btn.active {
+      background: rgba(6,182,212,0.1);
+      color: var(--text);
+    }
+    .sim-brand-dot {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    /* valor input */
+    .sim-input-wrap {
+      display: inline-flex; align-items: stretch;
+      border-radius: 8px; overflow: hidden;
+      border: 1px solid rgba(6,182,212,0.2);
+      background: rgba(15,23,42,0.7);
+      width: 200px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .sim-input-wrap:focus-within {
+      border-color: rgba(6,182,212,0.6);
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.1);
+    }
+    .sim-prefix {
+      display: flex; align-items: center;
+      padding: 0 8px 0 12px;
+      font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+      color: var(--text-muted); user-select: none;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .sim-input-wrap:focus-within .sim-prefix { color: var(--cyan); }
+    .sim-input-wrap input {
+      background: transparent; border: none; outline: none;
+      color: var(--text);
+      font-family: var(--font-mono); font-size: 16px; font-weight: 500;
+      width: 100%; padding: 12px 12px;
+    }
+    .sim-input-wrap input::placeholder { color: var(--text-muted); font-size: 14px; }
+    .sim-input-wrap input::-webkit-inner-spin-button,
+    .sim-input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    /* parcelas slider */
+    .sim-field-parc { min-width: 200px; }
+    .sim-parc-wrap  { display: flex; flex-direction: column; gap: 6px; }
+
+    .sim-parc-track {
+      position: relative; height: 4px;
+      background: rgba(255,255,255,0.08); border-radius: 2px;
+      overflow: hidden; pointer-events: none;
+    }
+    .sim-parc-fill {
+      position: absolute; top:0; left:0; height:100%;
+      background: linear-gradient(90deg, var(--cyan), #0ea5e9);
+      border-radius: 2px;
+      transition: width 0.1s;
+    }
+
+    input[type=range]#sim_parcelas {
+      -webkit-appearance: none; appearance: none;
+      width: 100%; height: 4px;
+      background: transparent;
+      cursor: pointer; margin: 0;
+    }
+    input[type=range]#sim_parcelas::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px rgba(6,182,212,0.5);
+      border: 2px solid #0f172a;
+      cursor: pointer;
+      margin-top: -6px;
+      transition: box-shadow 0.2s;
+    }
+    input[type=range]#sim_parcelas::-webkit-slider-runnable-track {
+      height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px;
+    }
+    input[type=range]#sim_parcelas:focus { outline: none; }
+    input[type=range]#sim_parcelas:focus::-webkit-slider-thumb {
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.2), 0 0 8px rgba(6,182,212,0.5);
+    }
+
+    .sim-parc-label {
+      font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+      color: var(--cyan); text-align: center;
+      background: rgba(6,182,212,0.08);
+      border: 1px solid rgba(6,182,212,0.2);
+      border-radius: 6px; padding: 4px 10px;
+      align-self: flex-start;
+      min-width: 42px; text-align: center;
+      transition: background 0.2s;
+    }
+
+    /* vertical separator */
+    .sim-vsep {
+      width: 1px; height: 90px; flex-shrink: 0;
+      background: linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent);
+      margin: 0 32px;
+    }
+
+    /* results */
+    .sim-results {
+      display: flex; align-items: stretch; gap: 0; flex: 1; flex-wrap: wrap;
+    }
+    .sim-res-item {
+      flex: 1; min-width: 140px;
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 6px 20px;
+    }
+    .sim-res-divider {
+      width: 1px;
+      background: linear-gradient(180deg, transparent, rgba(255,255,255,0.08), transparent);
+      margin: 4px 0;
+    }
+    .sim-res-lbl {
+      font-size: 10.5px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .sim-res-sub {
+      font-family: var(--font-mono); font-size: 9.5px;
+      color: var(--text-muted); margin-bottom: 6px;
+    }
+    .sim-res-val {
+      font-family: var(--font-mono); font-size: 22px; font-weight: 500;
+      letter-spacing: -0.02em; line-height: 1;
+      color: var(--text);
+      transition: color 0.3s;
+    }
+    .sim-highlight { font-size: 34px; color: var(--cyan); }
+
+    @media (max-width: 1000px) {
+      .sim-body { flex-direction: column; align-items: flex-start; }
+      .sim-vsep { width: 100%; height: 1px; margin: 20px 0; }
+      .sim-highlight { font-size: 26px; }
+    }
+
+    /* ─── PROFILE TOGGLE ───────────────────────────── */
+    .profile-bar {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 20px;
+      animation: fadeUp 0.5s 0.08s ease both;
+      flex-wrap: wrap;
+    }
+    .profile-bar-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .profile-toggle {
+      display: flex;
+      border-radius: 10px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(15,23,42,0.6);
+      backdrop-filter: blur(10px);
+    }
+    .profile-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 20px;
+      background: transparent;
+      border: none; cursor: pointer;
+      font-family: var(--font-ui); font-size: 12.5px; font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.03em;
+      transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+      position: relative;
+    }
+    .profile-btn + .profile-btn {
+      border-left: 1px solid rgba(255,255,255,0.07);
+    }
+    .profile-btn .profile-btn-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor; opacity: 0.4;
+      transition: opacity 0.2s, box-shadow 0.2s;
+      flex-shrink: 0;
+    }
+    .profile-btn:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+    .profile-btn.active {
+      background: rgba(6,182,212,0.14);
+      color: var(--cyan);
+      box-shadow: inset 0 0 0 1px rgba(6,182,212,0.25);
+    }
+    .profile-btn.active .profile-btn-dot {
+      opacity: 1;
+      box-shadow: 0 0 7px currentColor;
+    }
+    .profile-badge {
+      font-size: 9px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 2px 7px; border-radius: 100px;
+      background: rgba(6,182,212,0.15);
+      border: 1px solid rgba(6,182,212,0.3);
+      color: var(--cyan);
+      margin-left: 2px;
+    }
+
+    /* ══════════════════════════════════════════════════
+       ─── TEMAS ─────────────────────────────────────────
+       ══════════════════════════════════════════════════ */
+
+    /* ── Tema: Amarelo / Golden ────────────────────── */
+    body.theme-gold {
+      --bg:          #111007;
+      --surface:     #1a1608;
+      --card-from:   #241e09;
+      --card-to:     #14100400;
+      --border:      rgba(255,220,80,0.1);
+      --border-glow: rgba(245,158,11,0.3);
+      --navy:        #14100a;
+      --cyan:        #f59e0b;
+      --cyan-dim:    rgba(245,158,11,0.12);
+      --cyan-glow:   rgba(245,158,11,0.07);
+      --text:        #fef3c7;
+      --text-soft:   #d97706;
+      --text-muted:  #78600a;
+      --positive:    #fbbf24;
+      --negative:    #f87171;
+    }
+
+    /* ── Tema: Verde / Emerald ─────────────────────── */
+    body.theme-green {
+      --bg:          #060f0a;
+      --surface:     #0a1a10;
+      --card-from:   #0f2418;
+      --card-to:     #060f0a;
+      --border:      rgba(52,211,153,0.1);
+      --border-glow: rgba(52,211,153,0.28);
+      --navy:        #060f0a;
+      --cyan:        #34d399;
+      --cyan-dim:    rgba(52,211,153,0.12);
+      --cyan-glow:   rgba(52,211,153,0.07);
+      --text:        #d1fae5;
+      --text-soft:   #6ee7b7;
+      --text-muted:  #065f46;
+      --positive:    #34d399;
+      --negative:    #f87171;
+    }
+
+    /* ── Tema: Claro / Light ───────────────────────── */
+    body.theme-light {
+      --bg:          #f1f5f9;
+      --surface:     #ffffff;
+      --card-from:   #ffffff;
+      --card-to:     #f8fafc;
+      --border:      rgba(15,23,42,0.09);
+      --border-glow: rgba(99,102,241,0.2);
+      --navy:        #f8fafc;
+      --cyan:        #4f46e5;
+      --cyan-dim:    rgba(79,70,229,0.1);
+      --cyan-glow:   rgba(79,70,229,0.06);
+      --text:        #0f172a;
+      --text-soft:   #334155;
+      --text-muted:  #94a3b8;
+      --positive:    #059669;
+      --negative:    #dc2626;
+    }
+
+    /* ── Ajustes Light: navbar, inputs, cards ──────── */
+    body.theme-light body::before {
+      background-image: radial-gradient(circle, rgba(15,23,42,0.05) 1px, transparent 1px);
+    }
+    body.theme-light .navbar {
+      background: rgba(255,255,255,0.9);
+      border-bottom-color: rgba(15,23,42,0.1);
+    }
+    body.theme-light .bi-card {
+      box-shadow: 0 1px 3px rgba(15,23,42,0.08), 0 8px 24px rgba(15,23,42,0.06);
+    }
+    body.theme-light .bi-card:hover {
+      box-shadow: 0 2px 8px rgba(15,23,42,0.1), 0 12px 32px rgba(15,23,42,0.08),
+                  0 0 0 1px rgba(79,70,229,0.1);
+    }
+    body.theme-light .input-widget {
+      background: rgba(241,245,249,0.9);
+      border-color: rgba(15,23,42,0.15);
+    }
+    body.theme-light .input-widget input { color: #0f172a; }
+    body.theme-light .kpi-card {
+      background: #ffffff;
+      border-color: rgba(15,23,42,0.09);
+    }
+    body.theme-light .result-table tbody tr:hover,
+    body.theme-light .input-table tbody tr:hover { background: rgba(79,70,229,0.04); }
+    body.theme-light .section-inner { background: rgba(79,70,229,0.04); }
+    body.theme-light .profile-toggle,
+    body.theme-light .theme-toggle { background: rgba(15,23,42,0.05); }
+    body.theme-light .profile-btn:hover,
+    body.theme-light .theme-btn:hover { background: rgba(15,23,42,0.05); color: #0f172a; }
+    body.theme-light .nav-item { color: #475569; }
+    body.theme-light .nav-item:hover { color: #0f172a; background: rgba(15,23,42,0.05); }
+    body.theme-light .taxa-input-wrap,
+    body.theme-light .sim-input-wrap {
+      background: rgba(241,245,249,0.9);
+      border-color: rgba(79,70,229,0.25);
+    }
+    body.theme-light .taxa-input-wrap input,
+    body.theme-light .sim-input-wrap input { color: #0f172a; }
+    body.theme-light .cet-value.zero {
+      background: rgba(15,23,42,0.06);
+      border-color: rgba(15,23,42,0.1);
+      color: #94a3b8;
+    }
+    body.theme-light td.vm-col .cet-value.positive {
+      color: #3b82f6;
+      background: rgba(59,130,246,0.08);
+      border-color: rgba(59,130,246,0.2);
+    }
+    body.theme-light td.elo-col .cet-value.positive {
+      color: #d97706;
+      background: rgba(245,158,11,0.08);
+      border-color: rgba(245,158,11,0.2);
+    }
+    body.theme-light .sim-brand-btn { background: rgba(15,23,42,0.03); color: #64748b; }
+    body.theme-light .sim-brand-btn.active { background: rgba(79,70,229,0.1); color: #0f172a; }
+    body.theme-light .ai-btn {
+      background: linear-gradient(135deg, rgba(79,70,229,0.15), rgba(79,70,229,0.07));
+      border-color: rgba(79,70,229,0.3);
+      color: #4f46e5;
+    }
+    body.theme-light .logo-sub { color: var(--cyan); }
+    body.theme-light .status-dot { color: #475569; }
+    body.theme-light .page-footer { border-top-color: rgba(15,23,42,0.1); }
+    body.theme-light .footer-copy { color: #64748b; }
+
+    /* ── Blobs por tema ────────────────────────────── */
+    /* dark (default) */
+    .blob-1 { background: radial-gradient(circle, rgba(6,182,212,0.07) 0%, transparent 70%); }
+    .blob-2 { background: radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%); }
+    .blob-3 { background: radial-gradient(circle, rgba(6,182,212,0.04) 0%, transparent 70%); }
+
+    body.theme-gold .blob-1 { background: radial-gradient(circle, rgba(245,158,11,0.1) 0%, transparent 70%); }
+    body.theme-gold .blob-2 { background: radial-gradient(circle, rgba(251,191,36,0.07) 0%, transparent 70%); }
+    body.theme-gold .blob-3 { background: radial-gradient(circle, rgba(245,158,11,0.05) 0%, transparent 70%); }
+
+    body.theme-green .blob-1 { background: radial-gradient(circle, rgba(52,211,153,0.09) 0%, transparent 70%); }
+    body.theme-green .blob-2 { background: radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 70%); }
+    body.theme-green .blob-3 { background: radial-gradient(circle, rgba(52,211,153,0.05) 0%, transparent 70%); }
+
+    body.theme-light .blob-1 { background: radial-gradient(circle, rgba(79,70,229,0.07) 0%, transparent 70%); }
+    body.theme-light .blob-2 { background: radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%); }
+    body.theme-light .blob-3 { background: radial-gradient(circle, rgba(79,70,229,0.04) 0%, transparent 70%); }
+
+    /* ── Logo icon por tema ────────────────────────── */
+    body.theme-gold  .logo-icon { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 0 20px rgba(245,158,11,0.4); }
+    body.theme-green .logo-icon { background: linear-gradient(135deg, #34d399 0%, #059669 100%); box-shadow: 0 0 20px rgba(52,211,153,0.4); }
+    body.theme-light .logo-icon { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); box-shadow: 0 0 20px rgba(79,70,229,0.35); }
+
+    /* ── Theme picker UI ───────────────────────────── */
+    .theme-bar {
+      display: flex; align-items: center; gap: 8px;
+      margin-left: auto;
+    }
+    .theme-bar-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .theme-toggle {
+      display: flex; align-items: center;
+      gap: 4px; padding: 4px;
+      border-radius: 10px;
+      background: rgba(15,23,42,0.6);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .theme-btn {
+      width: 28px; height: 28px; border-radius: 7px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .theme-btn:hover { transform: scale(1.12); }
+    .theme-btn.active {
+      border-color: rgba(255,255,255,0.6);
+      box-shadow: 0 0 10px rgba(255,255,255,0.15);
+    }
+    /* swatch gradients */
+    .theme-btn[data-theme="dark"]  { background: linear-gradient(135deg, #0b0e14 50%, #06b6d4 100%); }
+    .theme-btn[data-theme="gold"]  { background: linear-gradient(135deg, #111007 50%, #f59e0b 100%); }
+    .theme-btn[data-theme="green"] { background: linear-gradient(135deg, #060f0a 50%, #34d399 100%); }
+    .theme-btn[data-theme="light"] { background: linear-gradient(135deg, #f1f5f9 50%, #4f46e5 100%); }
+    .theme-btn[data-theme="light"].active { border-color: rgba(79,70,229,0.6); }
+
+    /* transition suave no troca de tema */
+    body, .navbar, .bi-card, .kpi-card, .blob-1, .blob-2, .blob-3 {
+      transition: background 0.35s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.3s ease;
+    }
+
+    /* ─── RESPONSIVE ───────────────────────────────── */
+    @media (max-width: 1100px) {
+      .main-grid { grid-template-columns: 1fr; }
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 700px) {
+      .page-wrapper { padding: 72px 16px 48px; }
+      .kpi-strip { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .page-header { flex-direction: column; align-items: flex-start; gap: 14px; }
+      .navbar-nav { display: none; }
+      .input-widget { width: 90px; }
+      .input-widget input { width: 55px; font-size: 12px; }
+      .footer-formula { display: none; }
+    }
+    /* ══════════════════════════════════════════════════
+       ─── PROPOSTA COMERCIAL VIEW ───────────────────────
+       ══════════════════════════════════════════════════ */
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── Proposta: layout de duas colunas ─────────── */
+    .proposta-grid {
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 20px;
+      align-items: start;
+      animation: fadeUp 0.5s 0.1s ease both;
+    }
+
+    /* ── Proposta: Valor de Referência bar ─────────── */
+    .proposta-ref-bar {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 20px;
+      padding: 16px 22px;
+      background: linear-gradient(160deg, var(--card-from) 0%, var(--card-to) 100%);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      flex-wrap: wrap;
+      animation: fadeUp 0.5s 0.08s ease both;
+    }
+    .proposta-ref-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted); flex-shrink: 0;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .proposta-ref-input-wrap {
+      display: inline-flex; align-items: stretch;
+      border-radius: 8px; overflow: hidden;
+      border: 1px solid rgba(6,182,212,0.25);
+      background: rgba(15,23,42,0.7);
+      width: 200px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .proposta-ref-input-wrap:focus-within {
+      border-color: rgba(6,182,212,0.6);
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.1);
+    }
+    .proposta-ref-prefix {
+      display: flex; align-items: center;
+      padding: 0 8px 0 12px;
+      font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+      color: var(--text-muted); user-select: none;
+      border-right: 1px solid rgba(255,255,255,0.06);
+    }
+    .proposta-ref-input-wrap:focus-within .proposta-ref-prefix { color: var(--cyan); }
+    .proposta-ref-input-wrap input {
+      background: transparent; border: none; outline: none;
+      color: var(--text);
+      font-family: var(--font-mono); font-size: 16px; font-weight: 500;
+      width: 100%; padding: 10px 12px;
+    }
+    .proposta-ref-input-wrap input::-webkit-inner-spin-button,
+    .proposta-ref-input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .proposta-ref-input-wrap input::placeholder { color: var(--text-muted); font-size: 14px; }
+
+    .proposta-ref-hint {
+      font-size: 11.5px; color: var(--text-muted);
+      flex: 1;
+    }
+    .proposta-ref-hint strong { color: var(--text-soft); font-weight: 600; }
+
+    /* ── Proposta: PDF button ──────────────────────── */
+    .btn-pdf {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 20px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(6,182,212,0.2), rgba(6,182,212,0.1));
+      border: 1px solid rgba(6,182,212,0.4);
+      color: var(--cyan);
+      font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+      margin-left: auto; flex-shrink: 0;
+    }
+    .btn-pdf:hover {
+      background: linear-gradient(135deg, rgba(6,182,212,0.3), rgba(6,182,212,0.15));
+      box-shadow: 0 0 20px rgba(6,182,212,0.25);
+      transform: translateY(-1px);
+    }
+    .btn-pdf:active { transform: translateY(0); }
+
+    /* ── Proposta: input de taxas ──────────────────── */
+    .prop-input-widget {
+      display: inline-flex; align-items: stretch;
+      border-radius: 7px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(15,23,42,0.7);
+      width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .prop-input-widget:focus-within {
+      border-color: rgba(6,182,212,0.5);
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.08);
+    }
+    .prop-input-widget.vm-widget:focus-within {
+      border-color: rgba(59,130,246,0.5);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+    }
+    .prop-input-widget.elo-widget:focus-within {
+      border-color: rgba(245,158,11,0.45);
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.08);
+    }
+    .prop-input-widget input {
+      background: transparent; border: none; outline: none;
+      color: var(--text);
+      font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+      width: 100%; padding: 7px 6px 7px 10px;
+      text-align: right;
+    }
+    .prop-input-widget input::-webkit-inner-spin-button,
+    .prop-input-widget input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .prop-input-widget input::placeholder { color: var(--text-muted); }
+    .prop-input-suffix {
+      display: flex; align-items: center;
+      padding: 0 9px 0 4px;
+      font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+      color: var(--text-muted); user-select: none;
+    }
+
+    /* ── Proposta: tabela comparativa ─────────────── */
+    .comp-table {
+      width: 100%; border-collapse: collapse;
+    }
+    .comp-table thead th {
+      padding: 12px 16px;
+      font-size: 10.5px; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      background: rgba(255,255,255,0.01);
+    }
+    .comp-table thead th:first-child { text-align: left; width: 80px; }
+
+    .comp-table tbody tr {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      transition: background 0.12s;
+    }
+    .comp-table tbody tr:last-child { border-bottom: none; }
+    .comp-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+    .comp-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.012); }
+    .comp-table tbody tr:nth-child(even):hover { background: rgba(255,255,255,0.03); }
+
+    .comp-table tbody td {
+      padding: 9px 16px; font-size: 12px; vertical-align: middle; text-align: center;
+    }
+    .comp-table tbody td:first-child {
+      text-align: left;
+      color: var(--text-soft); font-weight: 600; font-size: 11.5px;
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+
+    /* CET badge na tabela comparativa */
+    .comp-cet {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+      min-width: 72px; padding: 4px 10px;
+      border-radius: 6px; border: 1px solid transparent;
+      transition: all 0.3s;
+    }
+    .comp-cet.zero { color: var(--text-muted); background: rgba(71,85,105,0.12); border-color: rgba(71,85,105,0.18); }
+    .comp-cet.current-vm { color: #93c5fd; background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.22); }
+    .comp-cet.current-elo { color: #fcd34d; background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); }
+    .comp-cet.offered { color: var(--text); background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+
+    /* Delta badges */
+    .delta-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-family: var(--font-mono); font-size: 11px; font-weight: 600;
+      padding: 3px 9px; border-radius: 100px;
+      white-space: nowrap;
+    }
+    .delta-badge.saving {
+      color: #34d399; background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.25);
+    }
+    .delta-badge.cost {
+      color: #f87171; background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2);
+    }
+    .delta-badge.neutral {
+      color: var(--text-muted); background: rgba(71,85,105,0.1); border: 1px solid rgba(71,85,105,0.18);
+    }
+
+    /* Saving em R$ */
+    .saving-brl {
+      font-family: var(--font-mono); font-size: 10.5px;
+      color: var(--text-muted); display: block; margin-top: 2px;
+    }
+    .saving-brl.pos { color: #34d399; }
+    .saving-brl.neg { color: #f87171; }
+
+    /* Legenda das colunas da tabela */
+    .comp-col-header { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .comp-col-sub { font-size: 9px; color: var(--text-muted); font-weight: 400; letter-spacing: 0.05em; text-transform: none; }
+
+    /* Totalizador de economia */
+    .economia-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+      animation: fadeUp 0.5s 0.12s ease both;
+    }
+    .econ-card {
+      background: linear-gradient(145deg, var(--card-from), var(--card-to));
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      transition: border-color 0.3s;
+    }
+    .econ-card:hover { border-color: rgba(52,211,153,0.2); }
+    .econ-label {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 7px;
+    }
+    .econ-value {
+      font-family: var(--font-mono); font-size: 18px; font-weight: 500;
+      letter-spacing: -0.02em;
+      color: #34d399;
+    }
+    .econ-value.negative { color: #f87171; }
+    .econ-value.neutral { color: var(--text-muted); }
+    .econ-sub { font-size: 10.5px; color: var(--text-muted); margin-top: 3px; }
+
+    /* Section group header */
+    .comp-section-divider td {
+      padding: 0 !important;
+    }
+    .comp-section-inner {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 16px;
+      background: rgba(6,182,212,0.03);
+      border-top: 1px solid rgba(6,182,212,0.08);
+      border-bottom: 1px solid rgba(6,182,212,0.08);
+    }
+    .comp-section-inner span {
+      font-size: 9.5px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(6,182,212,0.5); white-space: nowrap;
+    }
+    .comp-section-line { flex: 1; height: 1px; background: rgba(6,182,212,0.08); }
+
+    /* ── Modal de Prazo ───────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      width: 380px;
+      max-width: 95vw;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+      transform: translateY(20px);
+      transition: transform 0.25s;
+    }
+    .modal-overlay.open .modal-box { transform: translateY(0); }
+
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 18px; font-weight: 800;
+      color: var(--text); margin-bottom: 6px;
+    }
+    .modal-desc { font-size: 12.5px; color: var(--text-muted); margin-bottom: 24px; }
+
+    .modal-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .modal-label {
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-soft);
+    }
+    .modal-input-wrap {
+      display: flex; align-items: center;
+      border-radius: 8px; overflow: hidden;
+      border: 1px solid rgba(6,182,212,0.25);
+      background: rgba(15,23,42,0.7);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .modal-input-wrap:focus-within {
+      border-color: rgba(6,182,212,0.6);
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.1);
+    }
+    .modal-input-wrap input {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text);
+      font-family: var(--font-mono); font-size: 16px; font-weight: 500;
+      padding: 12px 16px;
+    }
+    .modal-input-wrap input::-webkit-inner-spin-button,
+    .modal-input-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .modal-input-suffix {
+      padding: 0 16px; font-size: 12px; font-weight: 600;
+      color: var(--text-muted); font-family: var(--font-ui);
+      letter-spacing: 0.05em; text-transform: uppercase;
+      border-left: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-cancel {
+      padding: 9px 20px; border-radius: 8px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      color: var(--text-soft); font-family: var(--font-ui);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-cancel:hover { background: rgba(255,255,255,0.08); }
+    .btn-confirm {
+      padding: 9px 24px; border-radius: 8px;
+      background: linear-gradient(135deg, rgba(6,182,212,0.25), rgba(6,182,212,0.12));
+      border: 1px solid rgba(6,182,212,0.45);
+      color: var(--cyan); font-family: var(--font-ui);
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    .btn-confirm:hover {
+      background: linear-gradient(135deg, rgba(6,182,212,0.35), rgba(6,182,212,0.18));
+      box-shadow: 0 0 18px rgba(6,182,212,0.25);
+    }
+
+    /* ── PDF print styles (inside #pdf-content) ────── */
+    @media print {
+      body > *:not(#pdf-content) { display: none !important; }
+    }
+
+    /* ── Responsive proposta ─────────────────────── */
+    @media (max-width: 1100px) {
+      .proposta-grid { grid-template-columns: 1fr; }
+      .economia-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 700px) {
+      .economia-strip { grid-template-columns: repeat(2, 1fr); }
+      .proposta-ref-bar { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ambient blobs -->
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
+
+<!-- ═══ NAVBAR ════════════════════════════════════════ -->
+<nav class="navbar">
+  <a class="navbar-logo" href="#">
+    <div class="logo-icon">
+      <svg width="22" height="16" viewBox="0 0 36 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- A -->
+        <path d="M0 18 L4.5 2 L6.5 2 L11 18 L8.8 18 L7.8 15 L3.2 15 L2.2 18Z" fill="white"/>
+        <path d="M3.9 13 L7.1 13 L5.5 7.5Z" fill="#0f172a"/>
+        <!-- F -->
+        <path d="M13 2 L13 18 L15.2 18 L15.2 11.5 L20 11.5 L20 9.5 L15.2 9.5 L15.2 4 L20.5 4 L20.5 2Z" fill="white"/>
+        <!-- M -->
+        <path d="M22 18 L22 2 L24.5 2 L28 12 L31.5 2 L34 2 L34 18 L31.8 18 L31.8 7 L28.8 16 L27.2 16 L24.2 7 L24.2 18Z" fill="white"/>
+      </svg>
+    </div>
+    <div class="logo-text">
+      <span class="logo-name">FEE Simulator</span>
+      <span class="logo-sub">Analytics Suite</span>
+    </div>
+  </a>
+
+  <div class="navbar-spacer"></div>
+
+  <div class="navbar-nav">
+    <a class="nav-item active" href="#" id="nav-dashboard" onclick="switchView('dashboard'); return false;">Dashboard AFM</a>
+    <a class="nav-item" href="#" id="nav-proposta" onclick="switchView('proposta'); return false;">Proposta Comercial</a>
+  </div>
+
+  <div class="navbar-meta">
+    <div class="status-dot">Cálculo em tempo real</div>
+  </div>
+</nav>
+
+<!-- ═══ VIEW: DASHBOARD AFM ═══════════════════════════ -->
+<div id="view-dashboard" class="view active">
+<!-- ═══ PAGE WRAPPER ══════════════════════════════════ -->
+<div class="page-wrapper">
+
+  <!-- ── PAGE HEADER ───────────────────────────────── -->
+  <div class="page-header">
+    <div class="page-header-left">
+      <div class="breadcrumb">
+        <span>Analytics</span>
+        <span class="breadcrumb-sep">/</span>
+        <span>Dashboard AFM</span>
+      </div>
+      <h1 class="page-title">Simulador de <span>Taxas</span></h1>
+      <p class="page-desc">Taxa Efetiva Total · Visa / Master &amp; Elo · 2x até 18x parcelas</p>
+    </div>
+    <div class="page-header-right">
+      <span class="header-badge realtime">⚡ Real-time</span>
+    </div>
+  </div>
+
+  <!-- ── PROFILE TOGGLE BAR ──────────────────────────── -->
+  <div class="profile-bar">
+    <span class="profile-bar-label">Perfil de Cálculo:</span>
+    <div class="profile-toggle" id="profile-toggle">
+      <button class="profile-btn active" data-profile="universal" onclick="setProfile('universal', this)">
+        <span class="profile-btn-dot"></span>
+        Universal
+        <span class="profile-badge">Padrão</span>
+      </button>
+      <button class="profile-btn" data-profile="mercadopago" onclick="setProfile('mercadopago', this)">
+        <span class="profile-btn-dot"></span>
+        Mercado Pago
+      </button>
+      <button class="profile-btn" data-profile="pagbank" onclick="setProfile('pagbank', this)">
+        <span class="profile-btn-dot"></span>
+        PagBank
+      </button>
+    </div>
+
+    <div class="theme-bar">
+      <span class="theme-bar-label">Tema:</span>
+      <div class="theme-toggle">
+        <button class="theme-btn active" data-theme="dark"  title="Dark Blue"     onclick="setTheme('dark',  this)"></button>
+        <button class="theme-btn"        data-theme="gold"  title="Golden"        onclick="setTheme('gold',  this)"></button>
+        <button class="theme-btn"        data-theme="green" title="Emerald"       onclick="setTheme('green', this)"></button>
+        <button class="theme-btn"        data-theme="light" title="Light Mode"    onclick="setTheme('light', this)"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MAIN GRID ──────────────────────────────────── -->
+  <div class="main-grid">
+
+    <!-- ── INPUT CARD ───────────────────────────────── -->
+    <div class="bi-card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="card-indicator cyan"></div>
+          <div>
+            <div class="card-title">Taxas de Entrada</div>
+            <div class="card-subtitle">MDR por bandeira (%)</div>
+          </div>
+        </div>
+        <span class="card-tag">6 campos</span>
+      </div>
+
+      <table class="input-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="brand-th">
+              <div class="brand-pill vm">
+                <div class="brand-dot vm"></div>Visa / Master
+              </div>
+            </th>
+            <th class="brand-th">
+              <div class="brand-pill elo">
+                <div class="brand-dot elo"></div>Elo
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-label">Débito</td>
+            <td class="input-cell">
+              <div class="input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="vm_deb" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="elo_deb" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="row-label">Crédito</td>
+            <td class="input-cell">
+              <div class="input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="vm_cred" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="elo_cred" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="row-label">2x a 6x</td>
+            <td class="input-cell">
+              <div class="input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="vm_2a6" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="elo_2a6" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="row-label">7x a 12x</td>
+            <td class="input-cell">
+              <div class="input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="vm_7a12" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="elo_7a12" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="row-label">13x a 18x</td>
+            <td class="input-cell">
+              <div class="input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="vm_13a18" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="elo_13a18" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="row-label">
+              Antecipação
+              <span class="antecp-note">taxa mensal</span>
+            </td>
+            <td class="input-cell">
+              <div class="input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="vm_ant" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="elo_ant" placeholder="0.00" />
+                <span class="input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── RESULT CARD ───────────────────────────────── -->
+    <div class="bi-card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="card-indicator blue"></div>
+          <div>
+            <div class="card-title">Taxa Fixa Final</div>
+            <div class="card-subtitle">Taxa Efetiva Total por modalidade</div>
+          </div>
+        </div>
+        <span class="card-tag">18 faixas</span>
+      </div>
+
+      <div class="result-table-wrap">
+        <table class="result-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>
+                <div class="brand-pill vm" style="display:inline-flex">
+                  <div class="brand-dot vm"></div>Visa / Master
+                </div>
+              </th>
+              <th>
+                <div class="brand-pill elo" style="display:inline-flex">
+                  <div class="brand-dot elo"></div>Elo
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Débito / Crédito -->
+            <tr>
+              <td class="row-label">Débito</td>
+              <td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_deb">0.00 %</span></td>
+              <td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_deb">0.00 %</span></td>
+            </tr>
+            <tr>
+              <td class="row-label">Crédito</td>
+              <td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_cred">0.00 %</span></td>
+              <td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_cred">0.00 %</span></td>
+            </tr>
+
+            <!-- 2x–6x group -->
+            <tr class="section-divider">
+              <td colspan="3">
+                <div class="section-inner">
+                  <div class="section-line"></div>
+                  <span>Parcelado 2x – 6x</span>
+                  <div class="section-line"></div>
+                </div>
+              </td>
+            </tr>
+            <tr><td class="row-label">2x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_2">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_2">0.00 %</span></td></tr>
+            <tr><td class="row-label">3x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_3">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_3">0.00 %</span></td></tr>
+            <tr><td class="row-label">4x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_4">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_4">0.00 %</span></td></tr>
+            <tr><td class="row-label">5x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_5">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_5">0.00 %</span></td></tr>
+            <tr><td class="row-label">6x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_6">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_6">0.00 %</span></td></tr>
+
+            <!-- 7x–12x group -->
+            <tr class="section-divider">
+              <td colspan="3">
+                <div class="section-inner">
+                  <div class="section-line"></div>
+                  <span>Parcelado 7x – 12x</span>
+                  <div class="section-line"></div>
+                </div>
+              </td>
+            </tr>
+            <tr><td class="row-label">7x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_7">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_7">0.00 %</span></td></tr>
+            <tr><td class="row-label">8x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_8">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_8">0.00 %</span></td></tr>
+            <tr><td class="row-label">9x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_9">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_9">0.00 %</span></td></tr>
+            <tr><td class="row-label">10x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_10">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_10">0.00 %</span></td></tr>
+            <tr><td class="row-label">11x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_11">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_11">0.00 %</span></td></tr>
+            <tr><td class="row-label">12x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_12">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_12">0.00 %</span></td></tr>
+
+            <!-- 13x–18x group -->
+            <tr class="section-divider">
+              <td colspan="3">
+                <div class="section-inner">
+                  <div class="section-line"></div>
+                  <span>Parcelado 13x – 18x</span>
+                  <div class="section-line"></div>
+                </div>
+              </td>
+            </tr>
+            <tr><td class="row-label">13x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_13">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_13">0.00 %</span></td></tr>
+            <tr><td class="row-label">14x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_14">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_14">0.00 %</span></td></tr>
+            <tr><td class="row-label">15x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_15">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_15">0.00 %</span></td></tr>
+            <tr><td class="row-label">16x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_16">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_16">0.00 %</span></td></tr>
+            <tr><td class="row-label">17x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_17">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_17">0.00 %</span></td></tr>
+            <tr><td class="row-label">18x</td><td class="cet-cell vm-col"><span class="cet-value zero" id="cet_vm_18">0.00 %</span></td><td class="cet-cell elo-col"><span class="cet-value zero" id="cet_elo_18">0.00 %</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /main-grid -->
+
+  <!-- ── DESCOBRIR TAXA (planilha) ─────────────────────── -->
+  <div class="bi-card taxa-card" style="margin-top:20px; animation: fadeUp 0.5s 0.2s ease both;">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="card-indicator" style="background:linear-gradient(180deg,#a78bfa,rgba(167,139,250,0.2))"></div>
+        <div>
+          <div class="card-title">Descobrir Taxa com uma Venda</div>
+          <div class="card-subtitle">Informe o valor passado e o valor recebido → taxa e desconto calculados em tempo real</div>
+        </div>
+      </div>
+      <span class="card-tag" style="background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.3);color:#c4b5fd;">
+        Cálculo em tempo real
+      </span>
+    </div>
+
+    <div class="taxa-body">
+
+      <!-- INPUTS -->
+      <div class="taxa-inputs">
+        <div class="taxa-field">
+          <label class="taxa-label" for="t_passado">
+            <span class="taxa-label-dot" style="background:#a78bfa;box-shadow:0 0 6px #a78bfa"></span>
+            V. Passado
+            <span class="taxa-label-hint">valor bruto</span>
+          </label>
+          <div class="taxa-input-wrap">
+            <span class="taxa-prefix">R$</span>
+            <input type="number" id="t_passado" step="0.01" min="0" placeholder="0,00" oninput="calcTaxa()" />
+          </div>
+        </div>
+
+        <div class="taxa-divider-arrow">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M6 14 H22 M16 8 L22 14 L16 20" stroke="rgba(167,139,250,0.5)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="taxa-field">
+          <label class="taxa-label" for="t_recebe">
+            <span class="taxa-label-dot" style="background:#34d399;box-shadow:0 0 6px #34d399"></span>
+            Recebe
+            <span class="taxa-label-hint">valor líquido</span>
+          </label>
+          <div class="taxa-input-wrap">
+            <span class="taxa-prefix">R$</span>
+            <input type="number" id="t_recebe" step="0.01" min="0" placeholder="0,00" oninput="calcTaxa()" />
+          </div>
+        </div>
+      </div>
+
+      <!-- DIVIDER -->
+      <div class="taxa-sep"></div>
+
+      <!-- RESULTS -->
+      <div class="taxa-results">
+        <div class="taxa-result-item">
+          <div class="taxa-result-label">Desconto</div>
+          <div class="taxa-result-formula">V.Passado − Recebe</div>
+          <div class="taxa-result-value" id="res_desconto">
+            <span class="taxa-zero">R$ —</span>
+          </div>
+        </div>
+
+        <div class="taxa-result-sep"></div>
+
+        <div class="taxa-result-item taxa-result-highlight">
+          <div class="taxa-result-label">Taxa Cobrada</div>
+          <div class="taxa-result-formula">(Recebe − Passado) / Passado × 100</div>
+          <div class="taxa-result-value" id="res_taxa">
+            <span class="taxa-zero">— %</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── SIMULAR VENDA (lógica coluna I planilha) ─────── -->
+  <div class="bi-card" style="margin-top:20px; animation: fadeUp 0.5s 0.25s ease both;">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="card-indicator" style="background:linear-gradient(180deg,#06b6d4,rgba(6,182,212,0.2))"></div>
+        <div>
+          <div class="card-title">Simular Venda com a Taxa</div>
+          <div class="card-subtitle">Quanto cobrar do cliente para receber o valor líquido desejado · lê as taxas do simulador acima</div>
+        </div>
+      </div>
+      <span class="card-tag">Simulador de Venda</span>
+    </div>
+
+    <div class="sim-body">
+
+      <!-- ── ENTRADAS ─────────────────────────── -->
+      <div class="sim-inputs-group">
+
+        <!-- brand toggle -->
+        <div class="sim-field sim-field-brand">
+          <div class="sim-label">Bandeira</div>
+          <div class="sim-brand-toggle" id="sim-brand-toggle">
+            <button class="sim-brand-btn active" data-brand="vm" onclick="simSetBrand('vm',this)">
+              <span class="sim-brand-dot" style="background:#3b82f6;box-shadow:0 0 5px #3b82f6"></span>Visa / Master
+            </button>
+            <button class="sim-brand-btn" data-brand="elo" onclick="simSetBrand('elo',this)">
+              <span class="sim-brand-dot" style="background:#f59e0b;box-shadow:0 0 5px #f59e0b"></span>Elo
+            </button>
+          </div>
+        </div>
+
+        <!-- valor líquido desejado -->
+        <div class="sim-field">
+          <label class="sim-label" for="sim_valor">
+            Quero receber
+            <span class="sim-label-hint">valor líquido desejado</span>
+          </label>
+          <div class="sim-input-wrap" id="sim_valor_wrap">
+            <span class="sim-prefix">R$</span>
+            <input type="number" id="sim_valor" step="0.01" min="0" placeholder="0,00" oninput="simularVenda()" />
+          </div>
+        </div>
+
+        <!-- parcelas -->
+        <div class="sim-field sim-field-parc">
+          <label class="sim-label" for="sim_parcelas">
+            Parcelas
+            <span class="sim-label-hint">1x a 18x</span>
+          </label>
+          <div class="sim-parc-wrap">
+            <div class="sim-parc-track" id="sim_parc_track">
+              <div class="sim-parc-fill" id="sim_parc_fill"></div>
+            </div>
+            <input type="range" id="sim_parcelas" min="1" max="18" value="1"
+                   oninput="simularVenda()" />
+            <div class="sim-parc-label" id="sim_parc_label">1x</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="sim-vsep"></div>
+
+      <!-- ── RESULTADOS ───────────────────────── -->
+      <div class="sim-results">
+
+        <!-- taxa aplicada (informativo) -->
+        <div class="sim-res-item sim-res-small">
+          <div class="sim-res-lbl">Desconto aplicado</div>
+          <div class="sim-res-sub">taxa da faixa selecionada</div>
+          <div class="sim-res-val" id="sim_desconto_pct"><span class="taxa-zero">— %</span></div>
+        </div>
+
+        <div class="sim-res-divider"></div>
+
+        <!-- total a cobrar -->
+        <div class="sim-res-item sim-res-main">
+          <div class="sim-res-lbl">Cobrar do cliente</div>
+          <div class="sim-res-sub">valor bruto · I10/(1−desconto)</div>
+          <div class="sim-res-val sim-highlight" id="sim_cobrar"><span class="taxa-zero">R$ —</span></div>
+        </div>
+
+        <div class="sim-res-divider"></div>
+
+        <!-- parcela -->
+        <div class="sim-res-item sim-res-small">
+          <div class="sim-res-lbl">Parcelas de</div>
+          <div class="sim-res-sub">cobrar ÷ nº parcelas</div>
+          <div class="sim-res-val" id="sim_parcela_val"><span class="taxa-zero">R$ —</span></div>
+        </div>
+
+      </div>
+
+    </div><!-- /sim-body -->
+  </div>
+
+  <!-- ── FOOTER ──────────────────────────────────────── -->
+  <footer class="page-footer">
+    <div class="footer-copy">
+      Dashboard <strong>AFM</strong> · Aldenir Medeiros · por <strong>Aldenir Medeiros</strong>
+    </div>
+  </footer>
+
+</div><!-- /page-wrapper -->
+</div><!-- /view-dashboard -->
+
+<!-- ═══ VIEW: PROPOSTA COMERCIAL ══════════════════════ -->
+<div id="view-proposta" class="view">
+<div class="page-wrapper">
+
+  <!-- ── PAGE HEADER ───────────────────────────────── -->
+  <div class="page-header" style="animation: fadeDown 0.5s ease both;">
+    <div class="page-header-left">
+      <div class="breadcrumb">
+        <span>Analytics</span>
+        <span class="breadcrumb-sep">/</span>
+        <span>Proposta Comercial</span>
+      </div>
+      <h1 class="page-title">Proposta <span>Comercial</span></h1>
+      <p class="page-desc">Compare as taxas do Dashboard AFM com as taxas oferecidas ao cliente · Estime a economia em R$</p>
+    </div>
+    <div class="page-header-right">
+      <span class="header-badge formula">📋 Comparativo TAXA</span>
+    </div>
+  </div>
+
+  <!-- ── VALOR DE REFERÊNCIA + PDF BUTTON ──────────── -->
+  <div class="proposta-ref-bar">
+    <span class="proposta-ref-label">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6.5" stroke="currentColor" stroke-opacity=".4"/><path d="M7 4v3l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      Valor de Referência
+    </span>
+    <div class="proposta-ref-input-wrap">
+      <span class="proposta-ref-prefix">R$</span>
+      <input type="number" id="prop_ref_valor" step="100" min="0" placeholder="10.000,00"
+             oninput="calcProposta()" />
+    </div>
+    <span class="proposta-ref-hint">
+      Informe um valor de referência para calcular a <strong>economia estimada em R$</strong> por faixa de parcelamento.
+    </span>
+    <button class="btn-pdf" onclick="abrirModalPDF()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 11h10M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Gerar Proposta PDF
+    </button>
+  </div>
+
+  <!-- ── ECONOMIA TOTALIZADOR ───────────────────────── -->
+  <div class="economia-strip" id="economia-strip">
+    <div class="econ-card">
+      <div class="econ-label">Economia V/M · Crédito</div>
+      <div class="econ-value neutral" id="econ_vm_cred">—</div>
+      <div class="econ-sub">sobre o valor de referência</div>
+    </div>
+    <div class="econ-card">
+      <div class="econ-label">Economia V/M · Parcelado</div>
+      <div class="econ-value neutral" id="econ_vm_parc">—</div>
+      <div class="econ-sub">média 2x–18x</div>
+    </div>
+    <div class="econ-card">
+      <div class="econ-label">Economia Elo · Crédito</div>
+      <div class="econ-value neutral" id="econ_elo_cred">—</div>
+      <div class="econ-sub">sobre o valor de referência</div>
+    </div>
+    <div class="econ-card">
+      <div class="econ-label">Economia Elo · Parcelado</div>
+      <div class="econ-value neutral" id="econ_elo_parc">—</div>
+      <div class="econ-sub">média 2x–18x</div>
+    </div>
+  </div>
+
+  <!-- ── PROPOSTA GRID ───────────────────────────────── -->
+  <div class="proposta-grid">
+
+    <!-- ── LADO ESQUERDO: Taxas Oferecidas ─────────── -->
+    <div class="bi-card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="card-indicator cyan"></div>
+          <div>
+            <div class="card-title">Taxas Oferecidas</div>
+            <div class="card-subtitle">MDR por bandeira — proposta ao cliente</div>
+          </div>
+        </div>
+        <span class="card-tag">MDR Oferta</span>
+      </div>
+
+      <table class="input-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="brand-th">
+              <div class="brand-pill vm"><div class="brand-dot vm"></div>Visa / Master</div>
+            </th>
+            <th class="brand-th">
+              <div class="brand-pill elo"><div class="brand-dot elo"></div>Elo</div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-label">Débito</td>
+            <td class="input-cell">
+              <div class="prop-input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="pvm_deb" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="prop-input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="pelo_deb" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="row-label">Crédito</td>
+            <td class="input-cell">
+              <div class="prop-input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="pvm_cred" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="prop-input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="pelo_cred" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="row-label">2x a 6x</td>
+            <td class="input-cell">
+              <div class="prop-input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="pvm_2a6" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="prop-input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="pelo_2a6" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="row-label">7x a 12x</td>
+            <td class="input-cell">
+              <div class="prop-input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="pvm_7a12" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="prop-input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="pelo_7a12" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="row-label">13x a 18x</td>
+            <td class="input-cell">
+              <div class="prop-input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="pvm_13a18" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="prop-input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="pelo_13a18" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="row-label">
+              Antecipação
+              <span class="antecp-note">taxa mensal</span>
+            </td>
+            <td class="input-cell">
+              <div class="prop-input-widget vm-widget">
+                <input type="number" step="0.01" min="0" id="pvm_ant" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+            <td class="input-cell">
+              <div class="prop-input-widget elo-widget">
+                <input type="number" step="0.01" min="0" id="pelo_ant" placeholder="0.00" oninput="calcProposta()" />
+                <span class="prop-input-suffix">%</span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Nota informativa -->
+      <div style="padding:14px 22px; border-top:1px solid var(--border); background:rgba(6,182,212,0.03);">
+        <p style="font-size:11px;color:var(--text-muted);line-height:1.6;">
+          Os valores do <strong style="color:var(--text-soft)">Dashboard AFM</strong> são lidos automaticamente da Página Principal.
+          Preencha as taxas acima para visualizar o comparativo com a TAXA calculada na mesma fórmula.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── LADO DIREITO: Tabela Comparativa ─────────── -->
+    <div class="bi-card">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="card-indicator blue"></div>
+          <div>
+            <div class="card-title">Comparativo TAXA</div>
+            <div class="card-subtitle">Dashboard AFM vs. Taxas Oferecidas</div>
+          </div>
+        </div>
+        <span class="card-tag">20 faixas</span>
+      </div>
+
+      <div class="result-table-wrap">
+        <table class="comp-table" id="comp-table-vm">
+          <thead>
+            <tr>
+              <th></th>
+              <th colspan="2" style="border-bottom:1px solid rgba(59,130,246,0.25);background:rgba(59,130,246,0.04)">
+                <div class="brand-pill vm" style="display:inline-flex"><div class="brand-dot vm"></div>Visa / Master</div>
+              </th>
+              <th colspan="2" style="border-bottom:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.04)">
+                <div class="brand-pill elo" style="display:inline-flex"><div class="brand-dot elo"></div>Elo</div>
+              </th>
+            </tr>
+            <tr>
+              <th></th>
+              <th>
+                <div class="comp-col-header">
+                  <span>TAXA Atual</span>
+                  <span class="comp-col-sub">Dashboard AFM</span>
+                </div>
+              </th>
+              <th>
+                <div class="comp-col-header">
+                  <span>TAXA Oferta</span>
+                  <span class="comp-col-sub">Taxas Oferecidas</span>
+                </div>
+              </th>
+              <th>
+                <div class="comp-col-header">
+                  <span>TAXA Atual</span>
+                  <span class="comp-col-sub">Dashboard AFM</span>
+                </div>
+              </th>
+              <th>
+                <div class="comp-col-header">
+                  <span>TAXA Oferta</span>
+                  <span class="comp-col-sub">Taxas Oferecidas</span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="comp-tbody">
+            <!-- Rows injected by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /proposta-grid -->
+
+  <!-- ── FOOTER ──────────────────────────────────────── -->
+  <footer class="page-footer">
+    <div class="footer-copy">
+      Proposta Comercial <strong>AFM</strong> · Aldenir Medeiros · por <strong>Aldenir Medeiros</strong>
+    </div>
+  </footer>
+
+</div><!-- /page-wrapper -->
+</div><!-- /view-proposta -->
+
+<!-- ═══ MODAL: PRAZO DE VALIDADE ═══════════════════════ -->
+<div class="modal-overlay" id="modal-pdf">
+  <div class="modal-box">
+    <div class="modal-title">Gerar Proposta PDF</div>
+    <p class="modal-desc">Defina o prazo de validade desta proposta. O documento será gerado com a data de emissão e a data de vencimento.</p>
+    <div class="modal-field">
+      <label class="modal-label" for="modal-prazo">Prazo de Validade</label>
+      <div class="modal-input-wrap">
+        <input type="number" id="modal-prazo" min="1" max="90" value="7" placeholder="7" />
+        <span class="modal-input-suffix">dias</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="fecharModalPDF()">Cancelar</button>
+      <button class="btn-confirm" onclick="gerarPDF()">Gerar PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TEMPLATE OCULTO PARA PDF ══════════════════════ -->
+<div id="pdf-content" style="display:none; font-family:'Inter',sans-serif; background:#fff; color:#0f172a; padding:0;"></div>
+
+<!-- ═══ JAVASCRIPT — LÓGICA PRESERVADA INTEGRALMENTE ══ -->
+<script>
+  /**
+   * TAXA (Taxa Efetiva Total) — Fórmula exata do mercado BR
+   *
+   * TAXA = taxa + ant × (1 - taxa/100) × (N+1)/2
+   *
+   * Onde:
+   *   taxa = MDR da bandeira (%)
+   *   ant  = taxa de antecipação mensal (%)
+   *   N    = número de parcelas (1 para crédito à vista)
+   *   (N+1)/2 = prazo médio ponderado das parcelas
+   *
+   * O fator (1 - taxa/100) representa o líquido sobre o qual
+   * a antecipação incide, multiplicado pelo prazo médio.
+   *
+   * Débito: liquidação imediata → TAXA = 0%
+   */
+
+  // ── SISTEMA DE TEMAS ────────────────────────────────
+  const THEME_CLASSES = ['theme-gold', 'theme-green', 'theme-light'];
+
+  function setTheme(theme, btn) {
+    // Remove todas as classes de tema do body
+    document.body.classList.remove(...THEME_CLASSES);
+    // Aplica a nova (dark é o padrão sem classe)
+    if (theme !== 'dark') {
+      document.body.classList.add('theme-' + theme);
+    }
+    // Atualiza botão ativo
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // ── PERFIL ATIVO ────────────────────────────────────
+  let activeProfile = 'universal'; // 'universal' | 'mercadopago' | 'pagbank'
+
+  function setProfile(profile, btn) {
+    activeProfile = profile;
+    document.querySelectorAll('.profile-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    calculate();
+    simularVenda();
+  }
+
+  function val(id) {
+    const v = parseFloat(document.getElementById(id).value);
+    return isNaN(v) ? 0 : v;
+  }
+
+  /**
+   * calcCET — retorna a Taxa Fixa Final conforme o perfil ativo
+   *
+   * Universal (TAXA padrão de mercado):
+   *   taxa + ant × (1 − taxa/100) × (N+1)/2
+   *
+   * Mercado Pago:
+   *   (ant × N) + taxa
+   *
+   * PagBank:
+   *   igual ao Universal, EXCETO crédito à vista (N=1):
+   *   apenas MDR, sem antecipação
+   */
+  function calcCET(taxa, ant, N, profile) {
+    profile = profile || activeProfile;
+    if (N === 0) return 0;
+
+    if (profile === 'mercadopago') {
+      if (N === 1) return taxa; // à vista: só MDR, sem antecipação
+      return (ant * N) + taxa;
+    }
+
+    if (profile === 'pagbank') {
+      if (N === 1) return taxa; // à vista: só MDR, sem antecipação
+      return taxa + ant * (1 - taxa / 100) * (N + 1) / 2;
+    }
+
+    // universal (padrão)
+    return taxa + ant * (1 - taxa / 100) * (N + 1) / 2;
+  }
+
+  function setCell(id, value) {
+    const el = document.getElementById(id);
+    el.textContent = value.toFixed(2) + ' %';
+    el.className = 'cet-value ' + (value > 0.0001 ? 'positive' : value < -0.0001 ? 'negative' : 'zero');
+  }
+
+  function calculate() {
+    const brands = ['vm', 'elo'];
+
+    brands.forEach(b => {
+      const deb    = val(`${b}_deb`);
+      const cred   = val(`${b}_cred`);
+      const r2a6   = val(`${b}_2a6`);
+      const r7a12  = val(`${b}_7a12`);
+      const r13a18 = val(`${b}_13a18`);
+      const ant    = val(`${b}_ant`);
+
+      // Débito: liquidação imediata, sem prazo de recebimento
+      setCell(`cet_${b}_deb`, 0);
+
+      // Crédito à vista (N=1)
+      setCell(`cet_${b}_cred`, calcCET(cred, ant, 1));
+
+      // Parcelado 2x–18x
+      for (let n = 2; n <= 18; n++) {
+        const taxa = n <= 6 ? r2a6 : n <= 12 ? r7a12 : r13a18;
+        setCell(`cet_${b}_${n}`, calcCET(taxa, ant, n));
+      }
+    });
+  }
+
+  document.querySelectorAll('input[type=number]').forEach(inp => {
+    inp.addEventListener('input', calculate);
+  });
+
+  calculate();
+
+  /* ─── DESCOBRIR TAXA (lógica da planilha) ────────────
+   *  DESCONTO = V.PASSADO - RECEBE          (B2 - B3)
+   *  TAXA     = (RECEBE - V.PASSADO) / V.PASSADO × 100  (B3-B2)/B2
+   *  Trata divisão por zero quando V.PASSADO = 0
+   * ───────────────────────────────────────────────── */
+  function calcTaxa() {
+    const passado = parseFloat(document.getElementById('t_passado').value);
+    const recebe  = parseFloat(document.getElementById('t_recebe').value);
+
+    const elDesc = document.getElementById('res_desconto');
+    const elTaxa = document.getElementById('res_taxa');
+
+    const hasPassado = !isNaN(passado) && passado !== 0;
+    const hasRecebe  = !isNaN(recebe);
+
+    if (!hasPassado || !hasRecebe) {
+      elDesc.innerHTML = '<span class="taxa-zero">R$ —</span>';
+      elTaxa.innerHTML  = '<span class="taxa-zero">— %</span>';
+      return;
+    }
+
+    // DESCONTO = V.PASSADO − RECEBE
+    const desconto = passado - recebe;
+    // TAXA     = (RECEBE − V.PASSADO) / V.PASSADO  →  mostrar como custo positivo
+    const taxa = ((recebe - passado) / passado) * 100;  // negativo = custo
+    const taxaDisplay = Math.abs(taxa);                 // exibe sempre positivo
+
+    // Desconto
+    const dSign = desconto >= 0 ? '−' : '+';
+    elDesc.innerHTML =
+      `<span class="taxa-val-desconto">R$ ${Math.abs(desconto).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+
+    // Taxa
+    const taxaClass = taxa >= 0 ? 'positive' : '';
+    elTaxa.innerHTML =
+      `<span class="taxa-val-taxa ${taxaClass}">${taxaDisplay.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} %</span>`;
+  }
+
+  /* ─── AI: MÉTRICA DE CUSTO DE TRANSAÇÃO ─────────── */
+  async function runAIPrompt() {
+    const btn    = document.getElementById('ai-btn');
+    const btnTxt = document.getElementById('ai-btn-text');
+    const output = document.getElementById('ai-output');
+
+    btn.disabled = true;
+    btnTxt.textContent = '⏳ Consultando IA...';
+    output.innerHTML = '<span class="ai-typing-cursor" style="color:var(--text-muted);font-size:11px">Gerando análise</span>';
+
+    const PROMPT = `Atue como um especialista em análise de dados. Preciso criar uma métrica de Custo de Transação (%).
+
+Dados disponíveis:
+* \`valor_bruto\` (Valor total passado)
+* \`valor_liquido\` (Valor que recebi)
+
+O que eu preciso:
+1. A fórmula matemática lógica.
+2. O código/sintaxe específica para usar no Power BI e Looker Studio (ambos).
+3. Como configurar o campo para que ele apareça como porcentagem com duas casas decimais.
+4. Uma breve explicação de como tratar casos onde o valor passado seja zero (para evitar erro de divisão por zero).
+
+Responda em português, de forma objetiva e bem estruturada com seções claras. Use markdown simples (### para títulos, \`código\` inline, blocos de código com triple backtick para DAX e fórmulas). Seja conciso.`;
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: PROMPT }]
+        })
+      });
+
+      const data = await response.json();
+      const raw  = (data.content || []).map(b => b.text || '').join('\n').trim();
+
+      output.innerHTML = markdownToHTML(raw);
+    } catch (err) {
+      output.innerHTML = `<span style="color:#f87171;font-size:11px">⚠ Erro ao conectar com a IA. Verifique sua conexão e tente novamente.</span>`;
+    } finally {
+      btn.disabled  = false;
+      btnTxt.textContent = '↺ Gerar Novamente';
+    }
+  }
+
+  function markdownToHTML(md) {
+    return md
+      .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+        `<pre><code>${escHTML(code.trim())}</code></pre>`)
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm,  '<h3>$1</h3>')
+      .replace(/^# (.+)$/gm,   '<h3>$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,    '<em>$1</em>')
+      .replace(/^[\-\*] (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>[\s\S]+?<\/li>)/g, m => `<ul>${m}</ul>`)
+      .replace(/<\/ul>\s*<ul>/g, '')
+      .replace(/\n{2,}/g, '</p><p>')
+      .replace(/^(?!<[hup])/gm, '')
+      .replace(/(.+?)(?=<h3>|<pre>|<ul>|$)/gs, s =>
+        s.trim() && !s.startsWith('<') ? `<p>${s.trim()}</p>` : s)
+      .replace(/<p><\/p>/g, '')
+      .trim();
+  }
+
+  function escHTML(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ─── SIMULAR VENDA ─────────────────────────────────────
+   *  Lógica da planilha CONSULTOR_MERCADO_PAGO coluna I:
+   *
+   *  desconto = 1 − (1 − MDR) × (1 − ant × (N+1)/2)
+   *
+   *  onde MDR (decimal) é lido dos inputs do simulador acima:
+   *    N=1       → crédito à vista  (${brand}_cred)
+   *    N=2–6     → parcelado 2-6x   (${brand}_2a6)
+   *    N=7–12    → parcelado 7-12x  (${brand}_7a12)
+   *    N=13–18   → parcelado 13-18x (${brand}_13a18)
+   *
+   *  valor_a_cobrar  = valor_liquido / (1 − desconto)   [I18]
+   *  valor_parcela   = valor_a_cobrar / N               [I16]
+   * ─────────────────────────────────────────────────── */
+  let simBrand = 'vm';
+
+  function simSetBrand(brand, btn) {
+    simBrand = brand;
+    document.querySelectorAll('.sim-brand-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    simularVenda();
+  }
+
+  function simularVenda() {
+    const valorDesejado = parseFloat(document.getElementById('sim_valor').value);
+    const N             = parseInt(document.getElementById('sim_parcelas').value) || 1;
+    const b             = simBrand;
+
+    // atualiza label e fill do slider
+    document.getElementById('sim_parc_label').textContent = N + 'x';
+    document.getElementById('sim_parc_fill').style.width  = ((N - 1) / 17 * 100) + '%';
+
+    const elCobrar  = document.getElementById('sim_cobrar');
+    const elParcela = document.getElementById('sim_parcela_val');
+    const elDesc    = document.getElementById('sim_desconto_pct');
+
+    const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (!valorDesejado || isNaN(valorDesejado) || valorDesejado <= 0) {
+      elCobrar.innerHTML  = '<span class="taxa-zero">R$ —</span>';
+      elParcela.innerHTML = '<span class="taxa-zero">R$ —</span>';
+      elDesc.innerHTML    = '<span class="taxa-zero">— %</span>';
+      return;
+    }
+
+    // MDR da faixa (já em %, dividir por 100 para decimal)
+    let mdrPct;
+    if      (N === 1)  mdrPct = val(`${b}_cred`);
+    else if (N <= 6)   mdrPct = val(`${b}_2a6`);
+    else if (N <= 12)  mdrPct = val(`${b}_7a12`);
+    else               mdrPct = val(`${b}_13a18`);
+
+    const antPct = val(`${b}_ant`);
+
+    const mdr = mdrPct / 100;
+    const ant = antPct / 100;
+
+    // Calcula desconto via calcCET (respeita perfil ativo)
+    const cetPct = calcCET(mdrPct, antPct, N);
+    const desconto = cetPct / 100;
+
+    if (desconto >= 1) {
+      elCobrar.innerHTML  = '<span style="color:#f87171;font-size:12px">Taxas inválidas</span>';
+      elParcela.innerHTML = '<span class="taxa-zero">—</span>';
+      elDesc.innerHTML    = '<span class="taxa-zero">—</span>';
+      return;
+    }
+
+    const valorCobrar  = valorDesejado / (1 - desconto);
+    const valorParcela = valorCobrar / N;
+    const descontoPct  = desconto * 100;
+
+    elCobrar.innerHTML  = `<span style="color:var(--cyan)">${fmt(valorCobrar)}</span>`;
+    elParcela.innerHTML = `<span style="color:var(--text)">${fmt(valorParcela)}</span>`;
+    elDesc.innerHTML    = `<span style="color:#f87171">${descontoPct.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} %</span>`;
+  }
+
+  // Inicializa label do slider
+  document.getElementById('sim_parc_fill').style.width = '0%';
+
+  /* ══════════════════════════════════════════════════════
+     ─── NAVEGAÇÃO ENTRE VIEWS ─────────────────────────────
+     ══════════════════════════════════════════════════════ */
+
+  function switchView(view) {
+    document.getElementById('view-dashboard').classList.toggle('active', view === 'dashboard');
+    document.getElementById('view-proposta').classList.toggle('active', view === 'proposta');
+    document.getElementById('nav-dashboard').classList.toggle('active', view === 'dashboard');
+    document.getElementById('nav-proposta').classList.toggle('active', view === 'proposta');
+
+    if (view === 'proposta') {
+      calcProposta();
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════
+     ─── LÓGICA PROPOSTA COMERCIAL ────────────────────────
+     ══════════════════════════════════════════════════════ */
+
+  /** Lê um valor de input da PÁGINA PRINCIPAL (Dashboard) */
+  function dashVal(id) {
+    const el = document.getElementById(id);
+    if (!el) return 0;
+    const v = parseFloat(el.value);
+    return isNaN(v) ? 0 : v;
+  }
+
+  /** Lê um valor de input da PROPOSTA */
+  function propVal(id) {
+    const el = document.getElementById(id);
+    if (!el) return 0;
+    const v = parseFloat(el.value);
+    return isNaN(v) ? 0 : v;
+  }
+
+  const fmtBRL = v =>
+    'R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const fmtPct = v => v.toFixed(2) + ' %';
+
+  /**
+   * Retorna TAXA atual do Dashboard para (brand, N)
+   *   brand: 'vm' | 'elo'
+   */
+  function getCETDash(brand, N) {
+    const mdr  = N === 0 ? dashVal(`${brand}_deb`)
+               : N === 1 ? dashVal(`${brand}_cred`)
+               : N <= 6  ? dashVal(`${brand}_2a6`)
+               : N <= 12 ? dashVal(`${brand}_7a12`)
+               :            dashVal(`${brand}_13a18`);
+    const ant  = dashVal(`${brand}_ant`);
+    if (N === 0) return 0;
+    return calcCET(mdr, ant, N);
+  }
+
+  /**
+   * Retorna TAXA ofertada para (brand_prefix, N)
+   *   brand_prefix: 'pvm' | 'pelo'
+   */
+  function getCETOffer(prefix, N) {
+    const mdr  = N === 0 ? propVal(`${prefix}_deb`)
+               : N === 1 ? propVal(`${prefix}_cred`)
+               : N <= 6  ? propVal(`${prefix}_2a6`)
+               : N <= 12 ? propVal(`${prefix}_7a12`)
+               :            propVal(`${prefix}_13a18`);
+    const ant  = propVal(`${prefix}_ant`);
+    if (N === 0) return 0;
+    return calcCET(mdr, ant, N);
+  }
+
+  function buildDeltaBadge(diff, refValor) {
+    if (Math.abs(diff) < 0.0001) {
+      return `<span class="delta-badge neutral">= igual</span>`;
+    }
+    // Diff negativo = oferta menor = economia para o cliente
+    const saving = diff < 0;
+    const symbol = saving ? '▼ ' : '▲ ';
+    const cls    = saving ? 'saving' : 'cost';
+    const label  = saving ? 'economia' : 'custo';
+    let html = `<span class="delta-badge ${cls}">${symbol}${Math.abs(diff).toFixed(2)}% ${label}</span>`;
+
+    if (refValor > 0) {
+      const brl = (Math.abs(diff) / 100) * refValor;
+      const brlCls = saving ? 'pos' : 'neg';
+      const sign   = saving ? '− ' : '+ ';
+      html += `<span class="saving-brl ${brlCls}">${sign}${fmtBRL(brl)}</span>`;
+    }
+    return html;
+  }
+
+  function buildSectionRow(label, colspan) {
+    return `<tr class="comp-section-divider">
+      <td colspan="${colspan}">
+        <div class="comp-section-inner">
+          <div class="comp-section-line"></div>
+          <span>${label}</span>
+          <div class="comp-section-line"></div>
+        </div>
+      </td>
+    </tr>`;
+  }
+
+  function buildRow(label, nVM, nElo, refValor) {
+    const cetVMDash  = getCETDash('vm',  nVM);
+    const cetVMOffer = getCETOffer('pvm', nVM);
+    const cetElDash  = getCETDash('elo',  nElo);
+    const cetElOffer = getCETOffer('pelo', nElo);
+
+    const diffVM = cetVMOffer - cetVMDash;
+    const diffEl = cetElOffer - cetElDash;
+
+    const vmDashCls  = cetVMDash  > 0.0001 ? 'current-vm' : 'zero';
+    const vmOffrCls  = cetVMOffer > 0.0001 ? 'offered' : 'zero';
+    const elDashCls  = cetElDash  > 0.0001 ? 'current-elo' : 'zero';
+    const elOffrCls  = cetElOffer > 0.0001 ? 'offered' : 'zero';
+
+    return `<tr>
+      <td>${label}</td>
+      <td>
+        <span class="comp-cet ${vmDashCls}">${fmtPct(cetVMDash)}</span>
+      </td>
+      <td>
+        <span class="comp-cet ${vmOffrCls}">${fmtPct(cetVMOffer)}</span>
+        <br>${buildDeltaBadge(diffVM, refValor)}
+      </td>
+      <td>
+        <span class="comp-cet ${elDashCls}">${fmtPct(cetElDash)}</span>
+      </td>
+      <td>
+        <span class="comp-cet ${elOffrCls}">${fmtPct(cetElOffer)}</span>
+        <br>${buildDeltaBadge(diffEl, refValor)}
+      </td>
+    </tr>`;
+  }
+
+  function calcProposta() {
+    const refValor = parseFloat(document.getElementById('prop_ref_valor').value) || 0;
+    const tbody = document.getElementById('comp-tbody');
+    if (!tbody) return;
+
+    let html = '';
+
+    // Débito
+    html += buildRow('Débito', 0, 0, refValor);
+    // Crédito
+    html += buildRow('Crédito', 1, 1, refValor);
+
+    // 2x–6x
+    html += buildSectionRow('Parcelado 2x – 6x', 5);
+    for (let n = 2; n <= 6; n++) html += buildRow(n + 'x', n, n, refValor);
+
+    // 7x–12x
+    html += buildSectionRow('Parcelado 7x – 12x', 5);
+    for (let n = 7; n <= 12; n++) html += buildRow(n + 'x', n, n, refValor);
+
+    // 13x–18x
+    html += buildSectionRow('Parcelado 13x – 18x', 5);
+    for (let n = 13; n <= 18; n++) html += buildRow(n + 'x', n, n, refValor);
+
+    tbody.innerHTML = html;
+
+    // Totalizadores de economia
+    updateEconomia(refValor);
+  }
+
+  function updateEconomia(refValor) {
+    const fmt = (v, isNeg) => {
+      if (refValor <= 0 || Math.abs(v) < 0.0001) return '—';
+      const brl = Math.abs(v) * refValor / 100;
+      return (isNeg ? '− ' : '+ ') + fmtBRL(brl);
+    };
+
+    // VM crédito (N=1)
+    const diffVMCred = getCETOffer('pvm', 1) - getCETDash('vm', 1);
+    // VM parcelado (média 2–18)
+    let sumVM = 0;
+    for (let n = 2; n <= 18; n++) sumVM += (getCETOffer('pvm', n) - getCETDash('vm', n));
+    const avgVM = sumVM / 17;
+    // Elo crédito (N=1)
+    const diffElCred = getCETOffer('pelo', 1) - getCETDash('elo', 1);
+    // Elo parcelado
+    let sumEl = 0;
+    for (let n = 2; n <= 18; n++) sumEl += (getCETOffer('pelo', n) - getCETDash('elo', n));
+    const avgEl = sumEl / 17;
+
+    function setEcon(id, diff) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (refValor <= 0 || Math.abs(diff) < 0.0001) {
+        el.textContent = '—'; el.className = 'econ-value neutral'; return;
+      }
+      const brl = Math.abs(diff) * refValor / 100;
+      const saving = diff < 0;
+      el.textContent = (saving ? '− ' : '+ ') + fmtBRL(brl);
+      el.className = 'econ-value' + (saving ? '' : ' negative');
+    }
+
+    setEcon('econ_vm_cred', diffVMCred);
+    setEcon('econ_vm_parc', avgVM);
+    setEcon('econ_elo_cred', diffElCred);
+    setEcon('econ_elo_parc', avgEl);
+  }
+
+  // Fix getCETOffer/getCETDash for 'cred' string
+  function getCETOfferStr(prefix, key) {
+    const mdr = key === 'cred' ? propVal(`${prefix}_cred`) : propVal(`${prefix}_${key}`);
+    const ant = propVal(`${prefix}_ant`);
+    return calcCET(mdr, ant, key === 'cred' ? 1 : 0);
+  }
+
+  /* ══════════════════════════════════════════════════════
+     ─── MODAL PDF ────────────────────────────────────────
+     ══════════════════════════════════════════════════════ */
+
+  function abrirModalPDF() {
+    document.getElementById('modal-pdf').classList.add('open');
+    document.getElementById('modal-prazo').focus();
+  }
+
+  function fecharModalPDF() {
+    document.getElementById('modal-pdf').classList.remove('open');
+  }
+
+  document.getElementById('modal-pdf').addEventListener('click', function(e) {
+    if (e.target === this) fecharModalPDF();
+  });
+
+  function gerarPDF() {
+    const prazo = parseInt(document.getElementById('modal-prazo').value) || 7;
+    fecharModalPDF();
+
+    const hoje  = new Date();
+    const validade = new Date(hoje.getTime() + prazo * 86400000);
+    const fmtDate = d => d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'});
+
+    const refValor = parseFloat(document.getElementById('prop_ref_valor').value) || 0;
+
+    // Lê taxas Dashboard
+    const dashData = {
+      vm:  { deb: dashVal('vm_deb'),  cred: dashVal('vm_cred'),  r2a6: dashVal('vm_2a6'),  r7a12: dashVal('vm_7a12'),  r13a18: dashVal('vm_13a18'),  ant: dashVal('vm_ant')  },
+      elo: { deb: dashVal('elo_deb'), cred: dashVal('elo_cred'), r2a6: dashVal('elo_2a6'), r7a12: dashVal('elo_7a12'), r13a18: dashVal('elo_13a18'), ant: dashVal('elo_ant') },
+    };
+    const offerData = {
+      vm:  { deb: propVal('pvm_deb'),  cred: propVal('pvm_cred'),  r2a6: propVal('pvm_2a6'),  r7a12: propVal('pvm_7a12'),  r13a18: propVal('pvm_13a18'),  ant: propVal('pvm_ant')  },
+      elo: { deb: propVal('pelo_deb'), cred: propVal('pelo_cred'), r2a6: propVal('pelo_2a6'), r7a12: propVal('pelo_7a12'), r13a18: propVal('pelo_13a18'), ant: propVal('pelo_ant') },
+    };
+
+    // Calcula total de economia
+    let totalEconVM = 0, totalEconElo = 0;
+    const rows = [];
+    const labels = ['Débito','Crédito','2x','3x','4x','5x','6x','7x','8x','9x','10x','11x','12x','13x','14x','15x','16x','17x','18x'];
+
+    for (let i = 0; i < labels.length; i++) {
+      const n = i === 0 ? 0 : i === 1 ? 1 : i;
+      const vmD = getCETDash('vm',  n);
+      const vmO = getCETOffer('pvm', n);
+      const elD = getCETDash('elo', n);
+      const elO = getCETOffer('pelo', n);
+      const dvM = vmO - vmD;
+      const dvE = elO - elD;
+      if (n > 1) { totalEconVM += dvM; totalEconElo += dvE; }
+      rows.push({ label: labels[i], vmD, vmO, elD, elO, dvM, dvE });
+    }
+
+    const econTotalVM = refValor > 0 ? -(totalEconVM / 17) * refValor / 100 : 0;
+    const econTotalEl = refValor > 0 ? -(totalEconElo / 17) * refValor / 100 : 0;
+
+    const colorDiff = (diff) => diff < -0.0001 ? '#059669' : diff > 0.0001 ? '#dc2626' : '#94a3b8';
+    const signDiff  = (diff) => diff < -0.0001 ? '▼ ' : diff > 0.0001 ? '▲ ' : '= ';
+
+    const rowsHTML = rows.map(r => `
+      <tr style="border-bottom:1px solid #e2e8f0;">
+        <td style="padding:7px 12px;font-weight:600;color:#334155;font-size:12px;">${r.label}</td>
+        <td style="padding:7px 12px;text-align:center;font-size:12px;color:#1e40af;">${r.vmD.toFixed(2)}%</td>
+        <td style="padding:7px 12px;text-align:center;font-size:12px;color:#0f172a;">${r.vmO.toFixed(2)}%</td>
+        <td style="padding:7px 12px;text-align:center;font-size:12px;color:${colorDiff(r.dvM)};font-weight:600;">${signDiff(r.dvM)}${Math.abs(r.dvM).toFixed(2)}%${refValor > 0 ? '<br><span style="font-size:10px;font-weight:400;">' + (r.dvM < -0.0001 ? '− ' : r.dvM > 0.0001 ? '+ ' : '') + fmtBRL(Math.abs(r.dvM) * refValor / 100) + '</span>' : ''}</td>
+        <td style="padding:7px 12px;text-align:center;font-size:12px;color:#b45309;">${r.elD.toFixed(2)}%</td>
+        <td style="padding:7px 12px;text-align:center;font-size:12px;color:#0f172a;">${r.elO.toFixed(2)}%</td>
+        <td style="padding:7px 12px;text-align:center;font-size:12px;color:${colorDiff(r.dvE)};font-weight:600;">${signDiff(r.dvE)}${Math.abs(r.dvE).toFixed(2)}%${refValor > 0 ? '<br><span style="font-size:10px;font-weight:400;">' + (r.dvE < -0.0001 ? '− ' : r.dvE > 0.0001 ? '+ ' : '') + fmtBRL(Math.abs(r.dvE) * refValor / 100) + '</span>' : ''}</td>
+      </tr>
+    `).join('');
+
+    const econSection = refValor > 0 ? `
+      <div style="margin-top:28px;padding:20px 24px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+        <p style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#15803d;margin:0 0 14px;">Estimativa de Economia com Base no Valor de Referência (${fmtBRL(refValor)})</p>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:10px;font-weight:600;color:#6b7280;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">V/M · Média Parcelado</div>
+            <div style="font-size:22px;font-weight:700;color:${econTotalVM >= 0 ? '#059669' : '#dc2626'};">${econTotalVM >= 0 ? '+ ' : '− '}${fmtBRL(Math.abs(econTotalVM))}</div>
+          </div>
+          <div style="width:1px;background:#d1fae5;"></div>
+          <div>
+            <div style="font-size:10px;font-weight:600;color:#6b7280;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;">Elo · Média Parcelado</div>
+            <div style="font-size:22px;font-weight:700;color:${econTotalEl >= 0 ? '#059669' : '#dc2626'};">${econTotalEl >= 0 ? '+ ' : '− '}${fmtBRL(Math.abs(econTotalEl))}</div>
+          </div>
+        </div>
+        <p style="font-size:10px;color:#6b7280;margin:12px 0 0;">* Estimativa baseada na média das faixas parceladas (2x–18x) sobre o valor de referência informado.</p>
+      </div>
+    ` : '';
+
+    const pdfHTML = `
+      <div style="max-width:900px;margin:0 auto;padding:40px 48px;font-family:'Inter',Arial,sans-serif;color:#0f172a;">
+
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding-bottom:24px;border-bottom:2px solid #0f172a;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:44px;height:44px;background:linear-gradient(135deg,#06b6d4,#0284c7);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+              <svg width="28" height="20" viewBox="0 0 36 20" fill="none">
+                <path d="M0 18 L4.5 2 L6.5 2 L11 18 L8.8 18 L7.8 15 L3.2 15 L2.2 18Z" fill="white"/>
+                <path d="M3.9 13 L7.1 13 L5.5 7.5Z" fill="#0f172a"/>
+                <path d="M13 2 L13 18 L15.2 18 L15.2 11.5 L20 11.5 L20 9.5 L15.2 9.5 L15.2 4 L20.5 4 L20.5 2Z" fill="white"/>
+                <path d="M22 18 L22 2 L24.5 2 L28 12 L31.5 2 L34 2 L34 18 L31.8 18 L31.8 7 L28.8 16 L27.2 16 L24.2 7 L24.2 18Z" fill="white"/>
+              </svg>
+            </div>
+            <div>
+              <div style="font-size:18px;font-weight:800;letter-spacing:-0.02em;color:#0f172a;">FEE Simulator · AFM</div>
+              <div style="font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#06b6d4;">Proposta Comercial</div>
+            </div>
+          </div>
+          <div style="text-align:right;font-size:11px;color:#64748b;line-height:1.8;">
+            <div><strong>Emissão:</strong> ${fmtDate(hoje)}</div>
+            <div><strong>Validade:</strong> ${fmtDate(validade)} (${prazo} dias)</div>
+            ${refValor > 0 ? `<div><strong>Ref.:</strong> ${fmtBRL(refValor)}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Table -->
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:#0f172a;color:#fff;">
+              <th style="padding:10px 12px;text-align:left;">Faixa</th>
+              <th colspan="3" style="padding:10px 12px;text-align:center;border-left:1px solid rgba(255,255,255,0.1);color:#93c5fd;">Visa / Master</th>
+              <th colspan="3" style="padding:10px 12px;text-align:center;border-left:1px solid rgba(255,255,255,0.1);color:#fcd34d;">Elo</th>
+            </tr>
+            <tr style="background:#1e293b;color:#94a3b8;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;">
+              <th style="padding:7px 12px;"></th>
+              <th style="padding:7px 12px;text-align:center;border-left:1px solid rgba(255,255,255,0.05);">TAXA Atual</th>
+              <th style="padding:7px 12px;text-align:center;">TAXA Oferta</th>
+              <th style="padding:7px 12px;text-align:center;">Diferença</th>
+              <th style="padding:7px 12px;text-align:center;border-left:1px solid rgba(255,255,255,0.05);">TAXA Atual</th>
+              <th style="padding:7px 12px;text-align:center;">TAXA Oferta</th>
+              <th style="padding:7px 12px;text-align:center;">Diferença</th>
+            </tr>
+          </thead>
+          <tbody style="background:#f8fafc;">
+            ${rowsHTML}
+          </tbody>
+        </table>
+
+        ${econSection}
+
+        <!-- Footer -->
+        <div style="margin-top:32px;padding-top:20px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:10px;color:#94a3b8;">
+            Dashboard AFM · Aldenir Medeiros · FEE Simulator Analytics Suite
+          </div>
+        </div>
+      </div>
+    `;
+
+    const pdfEl = document.getElementById('pdf-content');
+    pdfEl.innerHTML = pdfHTML;
+    pdfEl.style.display = 'block';
+
+    const opt = {
+      margin:      [0, 0, 0, 0],
+      filename:    `Proposta_AFM_${fmtDate(hoje).replace(/\//g,'-')}.pdf`,
+      image:       { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF:       { unit: 'mm', format: 'a4', orientation: 'landscape' },
+    };
+
+    html2pdf().set(opt).from(pdfEl).save().then(() => {
+      pdfEl.style.display = 'none';
+    });
+  }
+</script>
+</body>
+</html>
