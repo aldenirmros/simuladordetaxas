@@ -1336,10 +1336,79 @@
       .result-table thead th { padding: 10px 12px; }
       .cet-value { min-width: 72px; font-size: 12px; padding: 4px 9px; }
 
-      /* ── Comparativo table (Proposta) ──────────────── */
-      .comp-table { min-width: 580px; }
-      .comp-cet   { min-width: 60px; font-size: 11px; padding: 3px 7px; }
-      .delta-badge { font-size: 10px; padding: 2px 7px; }
+      /* ── Comparativo table (Proposta) — CARD VIEW mobile ── */
+      /* A tabela vira cards empilhados: cada <tr> = 1 card,   */
+      /* cada <td> = linha label + valor dentro do card.        */
+      .comp-table { min-width: unset; display: block; }
+      .comp-table thead { display: none; }   /* oculta header horizontal */
+      .comp-table tbody { display: block; }
+
+      .comp-table tbody tr {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        margin-bottom: 10px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: linear-gradient(160deg, var(--card-from), var(--card-to));
+      }
+      /* Linha da faixa (1ª célula) ocupa largura total → título do card */
+      .comp-table tbody tr td:first-child {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 8px 14px;
+        background: rgba(255,255,255,0.03);
+        border-bottom: 1px solid var(--border);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-soft);
+      }
+      /* Células de dados: display flex com label em cima */
+      .comp-table tbody tr td:not(:first-child) {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 10px 8px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+        text-align: center;
+      }
+      /* Label injetado via data-label */
+      .comp-table tbody tr td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+        line-height: 1.2;
+        text-align: center;
+      }
+      /* Separador visual entre VM e Elo */
+      .comp-table tbody tr td:nth-child(4) {
+        border-left: 1px solid var(--border);
+      }
+      /* Linha de section divider: span total */
+      .comp-table tbody tr.comp-section-divider {
+        display: block;
+        margin-bottom: 4px;
+        border: none;
+        border-radius: 0;
+        background: transparent;
+      }
+      .comp-table tbody tr.comp-section-divider td {
+        grid-column: unset;
+        background: transparent;
+        border: none;
+      }
+
+      .comp-cet   { min-width: unset; width: 100%; font-size: 11.5px; padding: 4px 8px; }
+      .delta-badge { font-size: 10px; padding: 2px 7px; margin-top: 4px; }
       .saving-brl  { font-size: 9.5px; }
 
       /* ── Economia strip ────────────────────────────── */
@@ -3008,17 +3077,17 @@ Responda em português, de forma objetiva e bem estruturada com seções claras.
 
     return `<tr>
       <td>${label}</td>
-      <td>
+      <td data-label="V/M · TAXA Atual">
         <span class="comp-cet ${vmDashCls}">${fmtPct(cetVMDash)}</span>
       </td>
-      <td>
+      <td data-label="V/M · TAXA Oferta">
         <span class="comp-cet ${vmOffrCls}">${fmtPct(cetVMOffer)}</span>
         <br>${buildDeltaBadge(diffVM, refValor)}
       </td>
-      <td>
+      <td data-label="Elo · TAXA Atual">
         <span class="comp-cet ${elDashCls}">${fmtPct(cetElDash)}</span>
       </td>
-      <td>
+      <td data-label="Elo · TAXA Oferta">
         <span class="comp-cet ${elOffrCls}">${fmtPct(cetElOffer)}</span>
         <br>${buildDeltaBadge(diffEl, refValor)}
       </td>
